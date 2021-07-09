@@ -8,39 +8,40 @@ to be done
     reltyz - undetected
     SmashBros - undetected
     One - undetected
+    x_axis - undetected
     use standard dev for bets (true value is always within 1 SD of the mean)
     make more accurate estimate of true value
 
 """
 
 
-# class Node():
-#     def __init__(self, val):
-#         self.next = None
-#         self.val = val
-#
-# class CircularLinkedList():
-#     #Constructor
-#     def __init__(self):
-#         self.head = None
-#
-#     def append(self, val):
-#         if not self.head:
-#             self.head = Node(val)
-#             self.head.next = self.head
-#         else:
-#             new_node = Node(val)
-#             curr = self.head
-#             while curr.next != self.head:
-#                 curr = curr.next
-#             curr.next = new_node
-#             new_node.next = self.head
-#
-#     def find(self, val):
-#         curr = self.head
-#         while curr.val != val:
-#             curr = curr.next
-#         return curr
+class Node():
+    def __init__(self, val):
+        self.next = None
+        self.val = val
+
+class CircularLinkedList():
+    #Constructor
+    def __init__(self):
+        self.head = None
+
+    def append(self, val):
+        if not self.head:
+            self.head = Node(val)
+            self.head.next = self.head
+        else:
+            new_node = Node(val)
+            curr = self.head
+            while curr.next != self.head:
+                curr = curr.next
+            curr.next = new_node
+            new_node.next = self.head
+
+    def find(self, val):
+        curr = self.head
+        while curr.val != val:
+            curr = curr.next
+        return curr
 
 
 class CompetitorInstance():
@@ -54,7 +55,7 @@ class CompetitorInstance():
         self.true_val_bids = [9, 11, 12]
         self.set_values = set(self.bids)
         self.true_set_values = set(self.true_val_bids)
-        # self.first_round_skippers = dict()
+        self.skippers_log = dict()
         self.long_bids = False
         pass
 
@@ -65,14 +66,10 @@ class CompetitorInstance():
         self.gameParameters = gameParameters
         self.numplayers = self.gameParameters["numPlayers"]
 
-        # self.rotation = CircularLinkedList()
-        # for i in range(self.numplayers):
-        #     self.rotation.append(i)
-        #
-        # curr = self.rotation.head
-        # for i in range(20):
-        #     print(curr.val)
-        #     curr = curr.next
+        self.rotation = CircularLinkedList()
+        for i in range(self.numplayers):
+            self.rotation.append(i)
+
 
     def onAuctionStart(self, index, trueValue):
         # index is the current player's index, that usually stays put from game to game
@@ -81,45 +78,25 @@ class CompetitorInstance():
         if trueValue != -1:
             self.trueValue = trueValue
         self.index = index
-        # print("I'm PIZZA BOT: " + str(index))
         pass
 
     def onBidMade(self, whoMadeBid, howMuch):
         # whoMadeBid is the index of the player that made the bid
         # howMuch is the amount that the bid was
 
-        # check skippers
-        # if len(self.whoMadeBid_log) > 0:
-        #     if self.whoMadeBid_log[-1] == endplayer_no:
-        #         if whoMadeBid != 0:
-        #             for i in range(0, whoMadeBid):
-        #                 if i not in self.first_round_skippers:
-        #                     self.first_round_skippers[i] = 1
-        #                     print("SKIPPER! competitor: " + str(i))
-        #                     print("Skipped times: " + str(self.first_round_skippers[i]))
-        #                 else:
-        #                     self.first_round_skippers[i] += 1
-        #                     print("SKIPPER! competitor: " + str(i))
-        #                     print("Skipped times: " + str(self.first_round_skippers[i]))
-        #     elif whoMadeBid != self.whoMadeBid_log[-1] + 1:
-        #         for i in range(self.whoMadeBid_log[-1] + 1, self.gameParameters["numPlayers"]):
-        #             if i not in self.first_round_skippers:
-        #                 self.first_round_skippers[i] = 1
-        #                 print("SKIPPER! competitor: " + str(i))
-        #                 print("Skipped times: " + str(self.first_round_skippers[i] ))
-        #             else:
-        #                 self.first_round_skippers[i] += 1
-        #                 print("SKIPPER! competitor: " + str(i))
-        #                 print("Skipped times: " + str(self.first_round_skippers[i] ))
-        #         for i in range(0, whoMadeBid):
-        #             if i not in self.first_round_skippers:
-        #                 self.first_round_skippers[i] = 1
-        #                 print("SKIPPER! competitor: " + str(i))
-        #                 print("Skipped times: " + str(self.first_round_skippers[i]))
-        #             else:
-        #                 self.first_round_skippers[i] += 1
-        #                 print("SKIPPER! competitor: " + str(i))
-        #                 print("Skipped times: " + str(self.first_round_skippers[i]))
+        # logging skippers
+        if len(self.whoMadeBid_log) == 0:
+            self.bid_index = self.rotation.find(whoMadeBid)
+        else:
+            if self.bid_index.next.val != whoMadeBid:
+                while self.bid_index.next.val != whoMadeBid:
+                    if self.bid_index.next.val not in self.skippers_log:
+                        self.skippers_log[self.bid_index.next.val] = 1
+                    else:
+                        self.skippers_log[self.bid_index.next.val] += 1
+                    self.bid_index = self.bid_index.next
+            self.bid_index = self.bid_index.next
+
 
 
         # logging who made last bid
@@ -165,11 +142,10 @@ class CompetitorInstance():
         # lastBid is the last bid that was made
         self.turn_no += 1
 
-        # # checking first_rounds_skippers
-        # if self.turn_no == 11:
-        #     print("THIS IS TURN 11")
-        #     self.enemy_skippers = [competitor for competitor in self.first_round_skippers.keys() if
-        #                            self.first_round_skippers[competitor] >= 9]
+        # checking first_rounds_skippers
+        if self.turn_no == 11:
+            self.enemy_skippers = [competitor for competitor in self.skippers_log.keys() if
+                                   self.skippers_log[competitor] >= 9]
 
         # checking allies after 4 turns:
         self.total_allies = [self.index]
@@ -298,6 +274,8 @@ class CompetitorInstance():
                     # as a safety measure, only report non-bidders if there has been extensive bidding
                     if self.long_bids:
                         reportOppTeam.append(competitor)
+                elif competitor in self.enemy_skippers:
+                    reportOppTeam.append(competitor)
                 elif self.consistent_diff(self.bid_diff_log[competitor]):
                     reportOppTeam.append(competitor)
                 elif self.largeJumps(self.bid_diff_log[competitor]):
@@ -321,10 +299,12 @@ class CompetitorInstance():
         del self.howMuch_log
         del self.known_bid_ally
         del self.other_allies
+        del self.bid_index
+        del self.enemy_skippers
 
         self.bid_diff_log = dict()
         self.last_bid_log = dict()
-        # self.first_round_skippers = dict()
+        self.skippers_log = dict()
         self.whoMadeBid_log = []
         self.turn_no = 0
         self.long_bids = False

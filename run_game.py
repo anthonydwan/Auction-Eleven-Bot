@@ -3,11 +3,11 @@ import importlib
 
 # List your bots here
 botsToRun = {
-    "NPC": 3,
-    "Bots.pizza9": 2,
+    "NPC": 10,
+    "Bots.pizza_bot": 2,
     # "examples.randomBidder": 3,
     # "examples.oneGreater": 3,
-    # "examples.oneGreaterSkipper": 4
+    "examples.oneGreaterSkipper": 4
 }
 
 engine = GameEngine()
