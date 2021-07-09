@@ -9,7 +9,6 @@ to be done
     SmashBros - undetected
     One - undetected
     x_axis - undetected
-    use standard dev for bets (true value is always within 1 SD of the mean)
     make more accurate estimate of true value
 
 """
@@ -68,7 +67,8 @@ class CompetitorInstance():
         # gameParameters: A dictionary containing a variety of game parameters
         self.gameParameters = gameParameters
         self.numplayers = self.gameParameters["numPlayers"]
-
+        self.mean_val = self.gameParameters["meanTrueValue"]
+        self.sd_val = self.gameParameters["stddevTrueValue"]
         self.rotation = CircularLinkedList()
         for i in range(self.numplayers):
             self.rotation.append(i)
@@ -188,12 +188,18 @@ class CompetitorInstance():
                     if lastbidder not in self.total_allies:
                         self.engine.makeBid(lastBid + self.bids[randomizerA])
             else:
-                if (lastBid < self.gameParameters["meanTrueValue"] - 500):
+                # we know that  trueVal is def between mean +/- 1 s.d.
+                if lastBid < self.mean_val - self.sd_val:
                     # But don't bid too high!
                     if lastbidder not in self.total_allies:
                         self.engine.makeBid(lastBid + self.bids[randomizerA])
-                else:
-                    pr = 15
+                elif lastBid < self.mean_val:
+                    pr = 30
+                    if pr > self.engine.random.randint(0, 100):
+                        if lastbidder not in self.total_allies:
+                            self.engine.makeBid(lastBid + self.bids[randomizerA])
+                elif lastBid < self.mean_val + self.sd_val:
+                    pr = 10
                     if pr > self.engine.random.randint(0, 100):
                         if lastbidder not in self.total_allies:
                             self.engine.makeBid(lastBid + self.bids[randomizerA])
