@@ -13,7 +13,7 @@ to be done
     make more accurate estimate of true value
 
 """
-
+####################################################################
 
 class Node():
     def __init__(self, val):
@@ -44,6 +44,8 @@ class CircularLinkedList():
         return curr
 
 
+###########################################################
+
 class CompetitorInstance():
     def __init__(self):
         # initialize personal variables
@@ -57,6 +59,7 @@ class CompetitorInstance():
         self.true_set_values = set(self.true_val_bids)
         self.skippers_log = dict()
         self.long_bids = False
+        self.enemy_skippers = []
         pass
 
     def onGameStart(self, engine, gameParameters):
@@ -97,8 +100,6 @@ class CompetitorInstance():
                     self.bid_index = self.bid_index.next
             self.bid_index = self.bid_index.next
 
-
-
         # logging who made last bid
         if len(self.whoMadeBid_log) >= 5:
             self.whoMadeBid_log.pop(0)
@@ -125,7 +126,6 @@ class CompetitorInstance():
                 self.bid_diff_log[whoMadeBid].append(howMuch - self.howMuch_log[-2])
             else:
                 self.bid_diff_log[whoMadeBid].append(howMuch - self.howMuch_log[-2])
-
 
         # logging bots last bids
         if whoMadeBid not in self.last_bid_log:
@@ -300,11 +300,12 @@ class CompetitorInstance():
         del self.known_bid_ally
         del self.other_allies
         del self.bid_index
-        del self.enemy_skippers
+
 
         self.bid_diff_log = dict()
         self.last_bid_log = dict()
         self.skippers_log = dict()
+        self.enemy_skippers = []
         self.whoMadeBid_log = []
         self.turn_no = 0
         self.long_bids = False
