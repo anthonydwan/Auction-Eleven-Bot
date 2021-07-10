@@ -2,8 +2,9 @@
 to be done
 
     abnormally low bidder is known value bidder (?)
-
+    npc mistake -
     CHRISTIE - does not bet big, focuses on identifying others
+    ogre
     edison - undetected
     reltyz - undetected
     SmashBros - undetected
@@ -145,7 +146,7 @@ class CompetitorInstance():
         # checking first_rounds_skippers
         if self.turn_no == 11:
             self.enemy_skippers = [competitor for competitor in self.skippers_log.keys() if
-                                   self.skippers_log[competitor] >= 9]
+                                   self.skippers_log[competitor] >= 10]
 
         # checking allies after 4 turns:
         self.total_allies = [self.index]
@@ -214,12 +215,12 @@ class CompetitorInstance():
 
     def smallset(self, ls):
         # length req ensures no mistaken bot
-        if len(set(ls)) > 6:
+        if len(ls) > 6:
             return len(set(ls)) <= 3
         return False
 
     def sameValue(self, ls):
-        if len(ls) > 2:
+        if len(ls) > 5:
             value = ls[0]
             for i in range(1, len(ls)):
                 if ls[i] != value:
@@ -235,7 +236,7 @@ class CompetitorInstance():
         return False
 
     def consistent_diff(self, ls):
-        if len(ls) > 3:
+        if len(ls) > 5:
             diff = abs(ls[1] - ls[0])
             for i in range(len(ls) - 1):
                 if abs(ls[i + 1] - ls[i]) != diff:
