@@ -1,7 +1,8 @@
 """
 to be done
 
-    w
+    pk normal and larper_known clashes
+
     non-NPC bid probability - enemy detection
     implement enemy detection at earlier stage of the game.
     CHRISTIE - does not bet big, focuses on identifying others
@@ -218,18 +219,20 @@ class CompetitorInstance():
                 return True
         return False
 
-    def pk_known(self,ls):
-        for val in ls[:2]:
-            if val == "skip":
+    def pk_known(self, ls):
+        if len(ls) > 6:
+            for val in ls[:2]:
+                if val == "skip":
+                    return False
+            if ls[2] == "skip":
                 return False
-        if val[2] == "skip":
-            return False
-        if val[2] < 2000:
-            return False
-        for val in ls[3:]:
-            if val != "skip":
+            if ls[2] < 2000:
                 return False
-        return True
+            for val in ls[3:]:
+                if val != "skip":
+                    return False
+            return True
+        return False
 
 
     def large_skippers(self, ls):
