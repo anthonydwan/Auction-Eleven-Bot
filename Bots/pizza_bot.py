@@ -85,7 +85,7 @@ class CompetitorInstance():
             self.trueValue = trueValue
         self.index = index
 
-        print("PIZZA BOT: " + str(self.index))
+        # print("PIZZA BOT: " + str(self.index))
         # initalising skipper log
         for k in range(self.numplayers):
             self.full_log[k] = []
@@ -231,21 +231,22 @@ class CompetitorInstance():
         ls = [val for val in ls if val != "skip"]
         return set_val_param == set(ls)
 
-    def smallset(self, ls):
+    def last10_smallset(self, ls):
         # length req ensures no mistaken bot
         ls = [val for val in ls if val != "skip"]
         if len(ls) > 6:
-            return len(set(ls)) <= 3
+            return len(set(ls[max(-10, -1*len(ls)+2):])) <= 3
 
     def neverbid(self,ls):
         if len(ls) > 12:
             return set(ls) == {"skip"}
 
-    def sameValue(self, ls):
+    def last10_sameValue(self, ls):
         ls = [val for val in ls if val != "skip"]
-        if len(ls) > 5:
-            value = ls[0]
-            for i in range(1, len(ls)):
+        if len(ls) > 8:
+            last_few = ls[max(-10, -1*len(ls)+2):]
+            value = last_few[0]
+            for i in range(len(last_few)):
                 if ls[i] != value:
                     return False
             return True
@@ -259,12 +260,13 @@ class CompetitorInstance():
                 return True
         return False
 
-    def consistent_diff(self, ls):
+    def last10_consistent_diff(self, ls):
         ls = [val for val in ls if val != "skip"]
-        if len(ls) > 5:
-            diff = abs(ls[1] - ls[0])
-            for i in range(len(ls) - 1):
-                if abs(ls[i + 1] - ls[i]) != diff:
+        if len(ls) > 8:
+            last_few = ls[max(-10, -1*len(ls)+2):]
+            diff = abs(last_few [1] - last_few [0])
+            for i in range(len(last_few) - 1):
+                if abs(last_few [i + 1] - last_few [i]) != diff:
                     return False
             return True
         else:
@@ -313,17 +315,20 @@ class CompetitorInstance():
                     known_val_bots.append(competitor)
                     self.engine.print("larperknown detected: " + str(competitor))
                 elif self.large_skippers(self.full_log[competitor]):
-                    self.engine.print("10roundSkipper detected: " + str(competitor))
+                    self.engine.print("first10_roundSkipper detected: " + str(competitor))
                     reportOppTeam.append(competitor)
-                elif self.consistent_diff(self.full_log[competitor]):
+                elif self.last10_consistent_diff(self.full_log[competitor]):
                     reportOppTeam.append(competitor)
-                    self.engine.print("const_diff detected: " + str(competitor))
+                    self.engine.print("last10_const_diff detected: " + str(competitor))
                 elif self.largeJumps(self.full_log[competitor]):
                     reportOppTeam.append(competitor)
                     self.engine.print("largejump detected: " + str(competitor))
-                elif self.smallset(self.full_log[competitor]):
+                elif self.last10_smallset(self.full_log[competitor]):
                     reportOppTeam.append(competitor)
-                    self.engine.print("smallset detected: " + str(competitor))
+                    self.engine.print("last10_smallset detected: " + str(competitor))
+                elif self.last10_sameValue(self.full_log[competitor]):
+                    reportOppTeam.append(competitor)
+                    self.engine.print("last10_sameval detected: " + str(competitor))
 
         reportOppTeam = list(set(reportOppTeam))
         self.engine.reportTeams(reportOwnTeam, reportOppTeam, known_val_bots)
