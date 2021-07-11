@@ -1,7 +1,7 @@
 """
 to be done
 
-
+    w
     non-NPC bid probability - enemy detection
     implement enemy detection at earlier stage of the game.
     CHRISTIE - does not bet big, focuses on identifying others
@@ -218,6 +218,20 @@ class CompetitorInstance():
                 return True
         return False
 
+    def pk_known(self,ls):
+        for val in ls[:2]:
+            if val == "skip":
+                return False
+        if val[2] == "skip":
+            return False
+        if val[2] < 2000:
+            return False
+        for val in ls[3:]:
+            if val != "skip":
+                return False
+        return True
+
+
     def large_skippers(self, ls):
         # if first 10 turns all skip
         if len(ls) >= 10:
@@ -301,6 +315,7 @@ class CompetitorInstance():
         competitors = [i for i in range(self.numplayers)]
 
         neverbid = []
+        pk_known = []
         larper_known = []
         large_skippers = []
         const_diff = []
@@ -312,13 +327,18 @@ class CompetitorInstance():
                 if self.neverbid(self.full_log[competitor]):
                     neverbid.append(competitor)
 
-                elif self.larper_known(self.full_log[competitor]):
+                elif self.pk_known(self.full_log[competitor]):
+                    pk_known.append(competitor)
+                    known_val_bots.append(competitor)
+
+                elif self.larper_known(self.full_log[competitor]) and not pk_known:
+                    # need to prevent clash of pk and larper_known for the timebeing
                     larper_known.append(competitor)
                     known_val_bots.append(competitor)
 
                 elif self.large_skippers(self.full_log[competitor]):
-
                     large_skippers.append(competitor)
+
                 elif self.last10_consistent_diff(self.full_log[competitor]):
                     const_diff.append(competitor)
 
@@ -328,13 +348,15 @@ class CompetitorInstance():
                 elif self.last10_smallset(self.full_log[competitor]):
                     smallset.append(competitor)
 
-        for opp_list in [neverbid, larper_known, large_skippers, const_diff, large_jumps, smallset]:
+        for opp_list in [neverbid, pk_known, larper_known, large_skippers, const_diff, large_jumps, smallset]:
             reportOppTeam.extend(opp_list)
 
         reportOppTeam = list(set(reportOppTeam))
 
         if neverbid:
             self.engine.print("neverbidder detected: " + str(neverbid))
+        if pk_known:
+            self.engine.print("larperknown detected: " + str(pk_known))
         if larper_known:
             self.engine.print("larperknown detected: " + str(larper_known))
         if large_skippers:
