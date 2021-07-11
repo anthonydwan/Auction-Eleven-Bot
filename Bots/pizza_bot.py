@@ -15,6 +15,8 @@ to be done
 
 
 """
+
+
 ####################################################################
 
 class Node():
@@ -22,8 +24,9 @@ class Node():
         self.next = None
         self.val = val
 
+
 class CircularLinkedList():
-    #Constructor
+    # Constructor
     def __init__(self):
         self.head = None
 
@@ -76,7 +79,6 @@ class CompetitorInstance():
         for i in range(self.numplayers):
             self.rotation.append(i)
 
-
     def onAuctionStart(self, index, trueValue):
         # index is the current player's index, that usually stays put from game to game
         # trueValue is -1 if this bot doesn't know the true value
@@ -109,8 +111,6 @@ class CompetitorInstance():
         self.curr_price = howMuch
         self.bid_index = self.bid_index.next
 
-
-
         # logging who made last bid (list)
         if len(self.whoMadeBid_log) >= 5:
             self.whoMadeBid_log.pop(0)
@@ -127,7 +127,6 @@ class CompetitorInstance():
         else:
             self.howMuch_log.append(howMuch)
 
-
         # logging bots last bids
         if whoMadeBid not in self.last_bid_log:
             self.last_bid_log[whoMadeBid] = [howMuch]
@@ -142,7 +141,6 @@ class CompetitorInstance():
     def onMyTurn(self, lastBid):
         # lastBid is the last bid that was made
         self.turn_no += 1
-
 
         # checking allies after 4 turns:
         self.total_allies = [self.index]
@@ -207,7 +205,7 @@ class CompetitorInstance():
     ####################################################################################
 
     def larper_known(self, ls):
-    #     # larper votes higher than NPC
+        #     # larper votes higher than NPC
         if self.largeJumps(ls):
             # four bids and skip rest
             if len(ls) >= 8:
@@ -220,12 +218,10 @@ class CompetitorInstance():
                 return True
         return False
 
-
     def large_skippers(self, ls):
         # if first 10 turns all skip
         if len(ls) >= 10:
             return set(ls[:10]) == {"skip"}
-
 
     def matchset(self, ls, set_val_param):
         ls = [val for val in ls if val != "skip"]
@@ -235,16 +231,16 @@ class CompetitorInstance():
         # length req ensures no mistaken bot
         ls = [val for val in ls if val != "skip"]
         if len(ls) > 6:
-            return len(set(ls[max(-10, -1*len(ls)+2):])) <= 3
+            return len(set(ls[max(-10, -len(ls) + 2):])) <= 3
 
-    def neverbid(self,ls):
+    def neverbid(self, ls):
         if len(ls) > 12:
             return set(ls) == {"skip"}
 
     def last10_sameValue(self, ls):
         ls = [val for val in ls if val != "skip"]
         if len(ls) > 8:
-            last_few = ls[max(-10, -1*len(ls)+2):]
+            last_few = ls[max(-10, -1 * len(ls) + 2):]
             value = last_few[0]
             for i in range(len(last_few)):
                 if ls[i] != value:
@@ -263,14 +259,13 @@ class CompetitorInstance():
     def last10_consistent_diff(self, ls):
         ls = [val for val in ls if val != "skip"]
         if len(ls) > 8:
-            last_few = ls[max(-10, -1*len(ls)+2):]
-            diff = abs(last_few [1] - last_few [0])
+            last_few = ls[max(-10, -len(ls) + 2):]
+            diff = abs(last_few[1] - last_few[0])
             for i in range(len(last_few) - 1):
-                if abs(last_few [i + 1] - last_few [i]) != diff:
+                if abs(last_few[i + 1] - last_few[i]) != diff:
                     return False
             return True
-        else:
-            return False
+        return False
 
     def detect_known_bid_ally(self) -> int:
         for competitor in self.full_log.keys():
@@ -294,7 +289,7 @@ class CompetitorInstance():
         # Now is the time to report team members, or do any cleanup.
 
         self.engine.print(f"ROUND {self.round}")
-        self.round +=1
+        self.round += 1
 
         reportOwnTeam = self.total_allies
         known_val_bots = []
@@ -305,39 +300,56 @@ class CompetitorInstance():
 
         competitors = [i for i in range(self.numplayers)]
 
+        neverbid = []
+        larper_known = []
+        large_skippers = []
+        const_diff = []
+        large_jumps = []
+        smallset = []
+
         for competitor in competitors:
             if competitor not in reportOwnTeam:
                 if self.neverbid(self.full_log[competitor]):
-                    reportOppTeam.append(competitor)
-                    self.engine.print("neverbidder detected: " + str(competitor))
+                    neverbid.append(competitor)
+
                 elif self.larper_known(self.full_log[competitor]):
-                    reportOppTeam.append(competitor)
+                    larper_known.append(competitor)
                     known_val_bots.append(competitor)
-                    self.engine.print("larperknown detected: " + str(competitor))
+
                 elif self.large_skippers(self.full_log[competitor]):
-                    self.engine.print("first10_roundSkipper detected: " + str(competitor))
-                    reportOppTeam.append(competitor)
+
+                    large_skippers.append(competitor)
                 elif self.last10_consistent_diff(self.full_log[competitor]):
-                    reportOppTeam.append(competitor)
-                    self.engine.print("last10_const_diff detected: " + str(competitor))
+                    const_diff.append(competitor)
+
                 elif self.largeJumps(self.full_log[competitor]):
-                    reportOppTeam.append(competitor)
-                    self.engine.print("largejump detected: " + str(competitor))
+                    large_jumps.append(competitor)
+
                 elif self.last10_smallset(self.full_log[competitor]):
-                    reportOppTeam.append(competitor)
-                    self.engine.print("last10_smallset detected: " + str(competitor))
-                elif self.last10_sameValue(self.full_log[competitor]):
-                    reportOppTeam.append(competitor)
-                    self.engine.print("last10_sameval detected: " + str(competitor))
+                    smallset.append(competitor)
+
+        for opp_list in [neverbid, larper_known, large_skippers, const_diff, large_jumps, smallset]:
+            reportOppTeam.extend(opp_list)
 
         reportOppTeam = list(set(reportOppTeam))
+
+        if neverbid:
+            self.engine.print("neverbidder detected: " + str(neverbid))
+        if larper_known:
+            self.engine.print("larperknown detected: " + str(larper_known))
+        if large_skippers:
+            self.engine.print("first10_roundSkipper detected: " + str(large_skippers))
+        if const_diff:
+            self.engine.print("last10_const_diff detected: " + str(const_diff))
+        if large_jumps:
+            self.engine.print("largejump detected: " + str(large_jumps))
+        if smallset:
+            self.engine.print("last10_smallset detected: " + str(smallset))
+
         self.engine.reportTeams(reportOwnTeam, reportOppTeam, known_val_bots)
 
-        # print logs
         # print(self.bid_diff_log)
         # print("own: " + str(reportOwnTeam))
-        # print("opp: " + str(reportOppTeam))
-        # print("known: " + str(known_val_bots))
         # print("self: " + str(self.index))
         # print("big skippers: " + str(self.enemy_skippers))
 
