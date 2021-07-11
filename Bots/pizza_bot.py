@@ -1,8 +1,8 @@
 """
 to be done
 
-    abnormally low bidder is known value bidder (?)
-    npc mistake -
+
+    non-NPC bid probability - enemy detection
     CHRISTIE - does not bet big, focuses on identifying others
     ogre
     edison - undetected
@@ -11,6 +11,7 @@ to be done
     One - undetected
     x_axis - undetected
     make more accurate estimate of true value
+
 
 """
 ####################################################################
@@ -53,8 +54,8 @@ class CompetitorInstance():
         self.last_bid_log = dict()
         self.whoMadeBid_log = []
         self.turn_no = 0
-        self.bids = [9, 10, 12]
-        self.true_val_bids = [9, 11, 12]
+        self.bids = [9, 11, 12]
+        self.true_val_bids = [9, 10, 12]
         self.set_values = set(self.bids)
         self.true_set_values = set(self.true_val_bids)
         self.skippers_log = dict()
