@@ -3,7 +3,7 @@ to be done
 
     need to fix the known bot not bidding over ally (information unsent)
 
-    pk normal and larper_known, christie known also 4 value clashes
+    pk normal and larper_christie_known, christie known also 4 value clashes
     fully understand larper
     non-NPC bid probability - enemy detection
 
@@ -209,7 +209,7 @@ class CompetitorInstance():
     # detection algorithms
     ####################################################################################
 
-    def larper_known(self, ls):
+    def larper_christie_known(self, ls):
         #     # larper votes higher than NPC
         if self.largeJumps(ls):
             # four bids and skip rest
@@ -332,7 +332,7 @@ class CompetitorInstance():
 
         neverbid = []
         pk_known = []
-        larper_known = []
+        larper_christie_known = []
         large_skippers = []
         const_diff = []
         large_jumps = []
@@ -347,9 +347,9 @@ class CompetitorInstance():
                     pk_known.append(competitor)
                     known_val_bots.append(competitor)
 
-                elif self.larper_known(self.full_log[competitor]) and not pk_known:
-                    # need to prevent clash of pk and larper_known for the timebeing
-                    larper_known.append(competitor)
+                elif self.larper_christie_known(self.full_log[competitor]) and not pk_known:
+                    # need to prevent clash of pk and larper_christie_known for the timebeing
+                    larper_christie_known.append(competitor)
                     known_val_bots.append(competitor)
 
                 elif self.large_skippers(self.full_log[competitor]):
@@ -364,7 +364,7 @@ class CompetitorInstance():
                 elif self.last10_smallset(self.full_log[competitor]):
                     smallset.append(competitor)
 
-        for opp_list in [neverbid, pk_known, larper_known, large_skippers, const_diff, large_jumps, smallset]:
+        for opp_list in [neverbid, pk_known, larper_christie_known, large_skippers, const_diff, large_jumps, smallset]:
             reportOppTeam.extend(opp_list)
 
         reportOppTeam = list(set(reportOppTeam))
@@ -373,8 +373,8 @@ class CompetitorInstance():
             self.engine.print("neverbidder detected: " + str(neverbid))
         if pk_known:
             self.engine.print("pk_known detected: " + str(pk_known))
-        if larper_known:
-            self.engine.print("larperknown detected: " + str(larper_known))
+        if larper_christie_known:
+            self.engine.print("larperknown detected: " + str(larper_christie_known))
         if large_skippers:
             self.engine.print("first10_roundSkipper detected: " + str(large_skippers))
         if const_diff:
