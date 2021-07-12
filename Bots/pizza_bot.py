@@ -221,7 +221,7 @@ class CompetitorInstance():
                     if val != "skip":
                         return False
                 return True
-            elif len(ls) > 4:
+            elif len(ls) >= 4:
                 for val in ls[0:4]:
                     if val == "skip":
                         return False
