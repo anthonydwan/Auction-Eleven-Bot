@@ -252,7 +252,10 @@ class CompetitorInstance():
 
     def matchset(self, ls, set_val_param):
         ls = [val for val in ls if val != "skip"]
-        return set_val_param == set(ls)
+        if len(ls) > 10:
+            return set_val_param == set(ls[:10])
+        else:
+            return set_val_param == set(ls)
 
     def last10_smallset(self, ls):
         # length req ensures no mistaken bot
