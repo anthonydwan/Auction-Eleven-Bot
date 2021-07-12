@@ -1,8 +1,6 @@
 """
 to be done
 
-    need to fix the known bot not bidding over ally (information unsent)
-
     pk normal and larper_known, christie known also 4 value clashes
     fully understand larper
 
@@ -197,7 +195,9 @@ class CompetitorInstance():
         randomizerB = self.engine.random.randint(0, len(self.true_val_bids) - 1)
 
         if self.trueValue:
-            if lastBid < self.trueValue - 300:
+            if self.trueValue - 500 < lastBid < self.trueValue - 300:
+                self.engine.makeBid(lastBid + self.true_val_bids[randomizerB])
+            elif lastBid < self.trueValue - 500:
                 if lastbidder not in self.total_allies:
                     self.engine.makeBid(lastBid + self.true_val_bids[randomizerB])
 
@@ -256,7 +256,6 @@ class CompetitorInstance():
                 if self.trueValue != -1 and self.last_bid_log[self.whoMadeBid_log[-1]] == self.trueValue - 7:
                     return True
         return False
-
 
 
     def larper_known(self, ls):
