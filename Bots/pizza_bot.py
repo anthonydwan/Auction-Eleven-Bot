@@ -3,8 +3,10 @@ to be done
 
     need to fix the known bot not bidding over ally (information unsent)
 
-    pk normal and larper_christie_known, christie known also 4 value clashes
+    pk normal and larper_known, christie known also 4 value clashes
     fully understand larper
+
+
     non-NPC bid probability - enemy detection
 
     implement enemy detection at earlier stage of the game*
@@ -67,7 +69,7 @@ class CompetitorInstance():
         self.set_values = set(self.bids)
         self.true_set_values = set(self.true_val_bids)
         self.full_log = dict()
-        self.long_bids = False
+        self.NPC_prob = dict()
         self.enemy_skippers = []
         self.round = 0
         pass
@@ -93,10 +95,10 @@ class CompetitorInstance():
         self.index = index
 
         # print("PIZZA BOT: " + str(self.index))
-        # initalising skipper log
+        # initalising full log and bid prob
         for k in range(self.numplayers):
             self.full_log[k] = []
-
+            self.NPC_prob[k] = 0.25
         self.curr_price = 1
         pass
 
@@ -111,7 +113,30 @@ class CompetitorInstance():
         if self.bid_index.val != whoMadeBid:
             while self.bid_index.val != whoMadeBid:
                 self.full_log[self.bid_index.val].append("skip")
+                # the probability P(NPC|not bid) = P(not bid|NPC)*P(NPC) / [P(not bid|NPC)*P(NPC) + P(not-bid|N-NPC)*P(N-NPC)]
+                prior = self.NPC_prob[self.bid_index.val]
+                NNPC_bid = 0.9
+                if howMuch < self.mean_val / 4:
+                    pr = 0.64
+                elif 3/4*self.mean_val > howMuch > self.mean_val/4:
+                    pr = 0.16
+                elif howMuch > 3/4:
+                    pr = 0.04
+                self.NPC_prob[self.bid_index.val] = (1-pr)*prior / ((1-pr)*prior + (1-NNPC_bid)*(1-prior))
                 self.bid_index = self.bid_index.next
+
+        # the probability P(NPC|bid) = P(bid|NPC)*P(NPC) / [P(bid|NPC)*P(NPC) + P(bid|N-NPC)*P(N-NPC)]
+        prior = self.NPC_prob[whoMadeBid]
+        NNPC_bid = 0.9
+        if howMuch < self.mean_val / 4:
+            pr = 0.64
+        elif 3 / 4 * self.mean_val > howMuch > self.mean_val / 4:
+            pr = 0.16
+        elif howMuch > 3 / 4:
+            pr = 0.04
+        self.NPC_prob[whoMadeBid] = (pr * prior)/ (pr * prior + NNPC_bid*(1 - prior))
+
+        # logging last bid
         self.full_log[whoMadeBid].append(howMuch - self.curr_price)
         self.curr_price = howMuch
         self.bid_index = self.bid_index.next
@@ -203,13 +228,15 @@ class CompetitorInstance():
                     if pr > self.engine.random.randint(0, 100):
                         if lastbidder not in self.total_allies:
                             self.engine.makeBid(lastBid + self.bids[randomizerA])
+
+
         pass
 
     ###################################################################################
     # detection algorithms
     ####################################################################################
 
-    def larper_christie_known(self, ls):
+    def larper_known(self, ls):
         #     # larper votes higher than NPC
         if self.largeJumps(ls):
             # four bids and skip rest
@@ -225,7 +252,7 @@ class CompetitorInstance():
                 for val in ls[0:4]:
                     if val == "skip":
                         return False
-                if self.trueValue != -1 and self.last_bid_log[self.whoMadeBid_log][-1] == self.trueValue - 7:
+                if self.trueValue != -1 and self.last_bid_log[self.whoMadeBid_log[-1]] == self.trueValue - 7:
                     return True
         return False
 
@@ -243,7 +270,6 @@ class CompetitorInstance():
                     return False
             return True
         return False
-
 
     def large_skippers(self, ls):
         # if first 10 turns all skip
@@ -332,11 +358,12 @@ class CompetitorInstance():
 
         neverbid = []
         pk_known = []
-        larper_christie_known = []
+        larper_known = []
         large_skippers = []
         const_diff = []
         large_jumps = []
         smallset = []
+        low_NPC_prob = []
 
         for competitor in competitors:
             if competitor not in reportOwnTeam:
@@ -347,9 +374,9 @@ class CompetitorInstance():
                     pk_known.append(competitor)
                     known_val_bots.append(competitor)
 
-                elif self.larper_christie_known(self.full_log[competitor]) and not pk_known:
-                    # need to prevent clash of pk and larper_christie_known for the timebeing
-                    larper_christie_known.append(competitor)
+                elif self.larper_known(self.full_log[competitor]) and not pk_known:
+                    # need to prevent clash of pk and larper_known for the timebeing
+                    larper_known.append(competitor)
                     known_val_bots.append(competitor)
 
                 elif self.large_skippers(self.full_log[competitor]):
@@ -364,7 +391,12 @@ class CompetitorInstance():
                 elif self.last10_smallset(self.full_log[competitor]):
                     smallset.append(competitor)
 
-        for opp_list in [neverbid, pk_known, larper_christie_known, large_skippers, const_diff, large_jumps, smallset]:
+                elif self.NPC_prob[competitor] < 0.01:
+                    low_NPC_prob.append(competitor)
+
+        for opp_list in [neverbid, pk_known, larper_known,
+                         large_skippers, const_diff, large_jumps,
+                         smallset, low_NPC_prob]:
             reportOppTeam.extend(opp_list)
 
         reportOppTeam = list(set(reportOppTeam))
@@ -373,8 +405,8 @@ class CompetitorInstance():
             self.engine.print("neverbidder detected: " + str(neverbid))
         if pk_known:
             self.engine.print("pk_known detected: " + str(pk_known))
-        if larper_christie_known:
-            self.engine.print("larperknown detected: " + str(larper_christie_known))
+        if larper_known:
+            self.engine.print("larperknown detected: " + str(larper_known))
         if large_skippers:
             self.engine.print("first10_roundSkipper detected: " + str(large_skippers))
         if const_diff:
@@ -383,6 +415,8 @@ class CompetitorInstance():
             self.engine.print("largejump detected: " + str(large_jumps))
         if smallset:
             self.engine.print("last10_smallset detected: " + str(smallset))
+        if low_NPC_prob:
+            self.engine.print("non-NPC bid distrib detected: " + str(low_NPC_prob))
 
         self.engine.reportTeams(reportOwnTeam, reportOppTeam, known_val_bots)
 
@@ -399,12 +433,14 @@ class CompetitorInstance():
         del self.bid_index
 
         # for key in self.full_log.keys():
-        #     print(str(key) + ": " + str(self.full_log[key][:10]))
+        #     print(str(key) + ": " + str(self.NPC_prob[key]))
 
+
+
+        self.NPC_prob = dict()
         self.last_bid_log = dict()
         self.full_log = dict()
         self.enemy_skippers = []
         self.whoMadeBid_log = []
         self.turn_no = 0
-        self.long_bids = False
         pass
