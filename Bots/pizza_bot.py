@@ -7,11 +7,9 @@ to be done
     fully understand larper
 
 
-    non-NPC bid probability - enemy detection
-
     implement enemy detection at earlier stage of the game*
     CHRISTIE - accurately send info about known value
-    fully relay info about true value
+
     ogresunited - undetected
     edison - undetected
     reltyz - undetected
@@ -64,8 +62,8 @@ class CompetitorInstance():
         self.last_bid_log = dict()
         self.whoMadeBid_log = []
         self.turn_no = 0
-        self.bids = [9, 11, 12]
-        self.true_val_bids = [9, 10, 12]
+        self.bids = [9, 11, 16, 12]
+        self.true_val_bids = [9, 10, 13]
         self.set_values = set(self.bids)
         self.true_set_values = set(self.true_val_bids)
         self.full_log = dict()
@@ -236,6 +234,31 @@ class CompetitorInstance():
     # detection algorithms
     ####################################################################################
 
+    def christie_known(self, ls, competitor):
+        #     # larper votes higher than NPC
+        if self.largeJumps(ls):
+            # four bids and skip rest
+            if len(ls) >= 8:
+                for val in ls[0:4]:
+                    if val == "skip":
+                        return False
+                for val in ls[4:min(len(ls), 10)]:
+                    if val != 8:
+                        return False
+                if self.trueValue != -1:
+                    if self.last_bid_log[competitor][-1] != self.trueValue - 57:
+                        return False
+                return True
+            elif len(ls) >= 4:
+                for val in ls[0:4]:
+                    if val == "skip":
+                        return False
+                if self.trueValue != -1 and self.last_bid_log[self.whoMadeBid_log[-1]] == self.trueValue - 7:
+                    return True
+        return False
+
+
+
     def larper_known(self, ls):
         #     # larper votes higher than NPC
         if self.largeJumps(ls):
@@ -357,6 +380,7 @@ class CompetitorInstance():
         competitors = [i for i in range(self.numplayers)]
 
         neverbid = []
+        christie_known = []
         pk_known = []
         larper_known = []
         large_skippers = []
@@ -369,6 +393,10 @@ class CompetitorInstance():
             if competitor not in reportOwnTeam:
                 if self.neverbid(self.full_log[competitor]):
                     neverbid.append(competitor)
+
+                elif self.christie_known(self.full_log[competitor], competitor):
+                    christie_known.append(competitor)
+                    known_val_bots.append(competitor)
 
                 elif self.pk_known(self.full_log[competitor]):
                     pk_known.append(competitor)
@@ -391,10 +419,10 @@ class CompetitorInstance():
                 elif self.last10_smallset(self.full_log[competitor]):
                     smallset.append(competitor)
 
-                elif self.NPC_prob[competitor] < 0.01:
+                elif self.NPC_prob[competitor] < 1e-3:
                     low_NPC_prob.append(competitor)
 
-        for opp_list in [neverbid, pk_known, larper_known,
+        for opp_list in [neverbid, christie_known, pk_known, larper_known,
                          large_skippers, const_diff, large_jumps,
                          smallset, low_NPC_prob]:
             reportOppTeam.extend(opp_list)
@@ -403,6 +431,8 @@ class CompetitorInstance():
 
         if neverbid:
             self.engine.print("neverbidder detected: " + str(neverbid))
+        if christie_known:
+            self.engine.print("christie_known detected: " + str(christie_known))
         if pk_known:
             self.engine.print("pk_known detected: " + str(pk_known))
         if larper_known:
