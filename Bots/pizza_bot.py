@@ -242,6 +242,15 @@ class CompetitorInstance():
         if len(ls) >=4:
             return ls[:4] == [19,13,13,14]
 
+    def V_Rao_known(self,ls):
+        if len(ls) >= 4:
+            for val in ls[:3]:
+                if val != 96:
+                    return False
+            if ls[3] < 100:
+                return False
+        return True
+
 
     def christie_known(self, ls, competitor):
         #     # larper votes higher than NPC
@@ -251,9 +260,8 @@ class CompetitorInstance():
                 for val in ls[0:4]:
                     if val == "skip":
                         return False
-                for val in ls[4:min(len(ls), 10)]:
-                    if val != 8:
-                        return False
+                if set(ls[4:-1]) != {8}:
+                    return False
                 if self.trueValue is not None:
                     if self.last_bid_log[competitor][-1] != self.trueValue - 57:
                         return False
@@ -392,7 +400,9 @@ class CompetitorInstance():
         neverbid = []
         one_unknown = []
         one_known = []
+        V_Rao_known = []
         christie_known = []
+
         pk_known = []
         larper_known = []
         large_skippers = []
@@ -413,6 +423,9 @@ class CompetitorInstance():
                 elif self.one_unknown(self.full_log[competitor]):
                     one_unknown.append(competitor)
 
+                elif self.V_Rao_known(self.full_log[competitor]):
+                    V_Rao_known.append(competitor)
+                    known_val_bots.append(competitor)
                 elif self.christie_known(self.full_log[competitor], competitor):
                     christie_known.append(competitor)
                     known_val_bots.append(competitor)
@@ -441,13 +454,15 @@ class CompetitorInstance():
                 elif self.NPC_prob[competitor] < 1e-3:
                     low_NPC_prob.append(competitor)
 
-        for opp_list in [neverbid, one_known, one_unknown, christie_known, pk_known, larper_known,
+        for opp_list in [neverbid, V_Rao_known, one_known, one_unknown, christie_known, pk_known, larper_known,
                          large_skippers, const_diff, large_jumps,
                          smallset, low_NPC_prob]:
             reportOppTeam.extend(opp_list)
 
         reportOppTeam = list(set(reportOppTeam))
 
+        if V_Rao_known:
+            self.engine.print("V_Rao_known detected: " + str(V_Rao_known))
         if one_known:
             self.engine.print("one_known detected: " + str(one_known))
         if one_unknown:
