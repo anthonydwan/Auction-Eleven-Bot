@@ -234,6 +234,15 @@ class CompetitorInstance():
     # detection algorithms
     ####################################################################################
 
+    def one_unknown(self, ls):
+        if len(ls) >=4:
+            return ls[:4] == [9,13,13,14]
+
+    def one_known(self, ls):
+        if len(ls) >=4:
+            return ls[:4] == [19,13,13,14]
+
+
     def christie_known(self, ls, competitor):
         #     # larper votes higher than NPC
         if self.largeJumps(ls):
@@ -379,6 +388,8 @@ class CompetitorInstance():
         competitors = [i for i in range(self.numplayers)]
 
         neverbid = []
+        one_unknown = []
+        one_known = []
         christie_known = []
         pk_known = []
         larper_known = []
@@ -392,6 +403,13 @@ class CompetitorInstance():
             if competitor not in reportOwnTeam:
                 if self.neverbid(self.full_log[competitor]):
                     neverbid.append(competitor)
+
+                elif self.one_known(self.full_log[competitor]):
+                    one_known.append(competitor)
+                    known_val_bots.append(competitor)
+
+                elif self.one_unknown(self.full_log[competitor]):
+                    one_unknown.append(competitor)
 
                 elif self.christie_known(self.full_log[competitor], competitor):
                     christie_known.append(competitor)
@@ -428,6 +446,10 @@ class CompetitorInstance():
 
         reportOppTeam = list(set(reportOppTeam))
 
+        if one_known:
+            self.engine.print("one_known detected: " + str(one_known))
+        if one_unknown:
+            self.engine.print("one_unknown detected: " + str(one_unknown))
         if neverbid:
             self.engine.print("neverbidder detected: " + str(neverbid))
         if christie_known:
