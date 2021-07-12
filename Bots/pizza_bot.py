@@ -60,7 +60,7 @@ class CompetitorInstance():
         self.last_bid_log = dict()
         self.whoMadeBid_log = []
         self.turn_no = 0
-        self.bids = [9, 11, 16, 12]
+        self.bids = [9, 11, 16]
         self.true_val_bids = [9, 10, 13]
         self.set_values = set(self.bids)
         self.true_set_values = set(self.true_val_bids)
@@ -439,7 +439,7 @@ class CompetitorInstance():
                 elif self.NPC_prob[competitor] < 1e-3:
                     low_NPC_prob.append(competitor)
 
-        for opp_list in [neverbid, christie_known, pk_known, larper_known,
+        for opp_list in [neverbid, one_known, one_unknown, christie_known, pk_known, larper_known,
                          large_skippers, const_diff, large_jumps,
                          smallset, low_NPC_prob]:
             reportOppTeam.extend(opp_list)
@@ -483,8 +483,8 @@ class CompetitorInstance():
         del self.other_allies
         del self.bid_index
 
-        # for key in self.full_log.keys():
-        #     print(str(key) + ": " + str(self.NPC_prob[key]))
+        for key in self.full_log.keys():
+            self.engine.print(str(key) + "'s NPC prob: " + str(self.NPC_prob[key]))
 
 
 
