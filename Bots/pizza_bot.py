@@ -254,7 +254,7 @@ class CompetitorInstance():
                 for val in ls[4:min(len(ls), 10)]:
                     if val != 8:
                         return False
-                if self.trueValue != -1:
+                if self.trueValue is not None:
                     if self.last_bid_log[competitor][-1] != self.trueValue - 57:
                         return False
                 return True
@@ -262,8 +262,9 @@ class CompetitorInstance():
                 for val in ls[0:4]:
                     if val == "skip":
                         return False
-                if self.trueValue != -1 and self.last_bid_log[self.whoMadeBid_log[-1]] == self.trueValue - 7:
-                    return True
+                if self.trueValue is not None:
+                    if self.last_bid_log[self.whoMadeBid_log[-1]] == self.trueValue - 7:
+                        return True
         return False
 
 
@@ -283,8 +284,9 @@ class CompetitorInstance():
                 for val in ls[0:4]:
                     if val == "skip":
                         return False
-                if self.trueValue != -1 and self.last_bid_log[self.whoMadeBid_log[-1]] == self.trueValue - 7:
-                    return True
+                if self.trueValue is not None:
+                    if self.last_bid_log[self.whoMadeBid_log[-1]] == self.trueValue - 7:
+                        return True
         return False
 
     def pk_known(self, ls):
@@ -354,7 +356,7 @@ class CompetitorInstance():
             return True
         return False
 
-    def detect_known_bid_ally(self) -> int:
+    def detect_known_bid_ally(self):
         for competitor in self.full_log.keys():
             if self.matchset(self.full_log[competitor], self.true_set_values):
                 return competitor
