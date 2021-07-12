@@ -1,12 +1,16 @@
 """
 to be done
 
-    pk normal and larper_known clashes
+    need to fix the known bot not bidding over ally (information unsent)
 
+    pk normal and larper_known, christie known also 4 value clashes
+    fully understand larper
     non-NPC bid probability - enemy detection
-    implement enemy detection at earlier stage of the game.
-    CHRISTIE - does not bet big, focuses on identifying others
-    ogre
+
+    implement enemy detection at earlier stage of the game*
+    CHRISTIE - accurately send info about known value
+    fully relay info about true value
+    ogresunited - undetected
     edison - undetected
     reltyz - undetected
     SmashBros - undetected
@@ -217,6 +221,12 @@ class CompetitorInstance():
                     if val != "skip":
                         return False
                 return True
+            elif len(ls) > 4:
+                for val in ls[0:4]:
+                    if val == "skip":
+                        return False
+                if self.trueValue != -1 and self.last_bid_log[self.whoMadeBid_log][-1] == self.trueValue - 7:
+                    return True
         return False
 
     def pk_known(self, ls):
@@ -359,7 +369,7 @@ class CompetitorInstance():
         if neverbid:
             self.engine.print("neverbidder detected: " + str(neverbid))
         if pk_known:
-            self.engine.print("larperknown detected: " + str(pk_known))
+            self.engine.print("pk_known detected: " + str(pk_known))
         if larper_known:
             self.engine.print("larperknown detected: " + str(larper_known))
         if large_skippers:
