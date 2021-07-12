@@ -4,16 +4,13 @@ to be done
     pk normal and larper_known, christie known also 4 value clashes
     fully understand larper
 
-
     implement enemy detection at earlier stage of the game*
-    CHRISTIE - accurately send info about known value
 
     ogresunited - undetected
-    edison - undetected
     reltyz - undetected
+        x_axis - undetected
     SmashBros - undetected
-    One - undetected
-    x_axis - undetected
+
     make more accurate estimate of true value
 
 
@@ -67,6 +64,7 @@ class CompetitorInstance():
         self.full_log = dict()
         self.NPC_prob = dict()
         self.enemy_skippers = []
+        self.howMuch_log = [1]
         self.round = 0
         pass
 
@@ -112,11 +110,11 @@ class CompetitorInstance():
                 # the probability P(NPC|not bid) = P(not bid|NPC)*P(NPC) / [P(not bid|NPC)*P(NPC) + P(not-bid|N-NPC)*P(N-NPC)]
                 prior = self.NPC_prob[self.bid_index.val]
                 NNPC_bid = 0.9
-                if howMuch < self.mean_val / 4:
+                if self.howMuch_log[-1] < self.mean_val / 4:
                     pr = 0.64
-                elif 3/4*self.mean_val > howMuch > self.mean_val/4:
+                elif 3/4*self.mean_val > self.howMuch_log[-1] > self.mean_val/4:
                     pr = 0.16
-                elif howMuch > 3/4:
+                elif self.howMuch_log[-1] > 3/4:
                     pr = 0.04
                 self.NPC_prob[self.bid_index.val] = (1-pr)*prior / ((1-pr)*prior + (1-NNPC_bid)*(1-prior))
                 self.bid_index = self.bid_index.next
@@ -124,11 +122,11 @@ class CompetitorInstance():
         # the probability P(NPC|bid) = P(bid|NPC)*P(NPC) / [P(bid|NPC)*P(NPC) + P(bid|N-NPC)*P(N-NPC)]
         prior = self.NPC_prob[whoMadeBid]
         NNPC_bid = 0.9
-        if howMuch < self.mean_val / 4:
+        if self.howMuch_log[-1] < self.mean_val / 4:
             pr = 0.64
-        elif 3 / 4 * self.mean_val > howMuch > self.mean_val / 4:
+        elif 3 / 4 * self.mean_val > self.howMuch_log[-1] > self.mean_val / 4:
             pr = 0.16
-        elif howMuch > 3 / 4:
+        elif self.howMuch_log[-1] > 3 / 4:
             pr = 0.04
         self.NPC_prob[whoMadeBid] = (pr * prior)/ (pr * prior + NNPC_bid*(1 - prior))
 
@@ -145,9 +143,7 @@ class CompetitorInstance():
             self.whoMadeBid_log.append(whoMadeBid)
 
         # logging queue of last few bids
-        if not hasattr(self, "howMuch_log"):
-            self.howMuch_log = [0, howMuch]
-        elif len(self.howMuch_log) >= 3:
+        if len(self.howMuch_log) >= 3:
             self.howMuch_log.pop(0)
             self.howMuch_log.append(howMuch)
         else:
@@ -234,6 +230,11 @@ class CompetitorInstance():
     # detection algorithms
     ####################################################################################
 
+
+    def deadbeef_known(self, ls):
+        if len(ls) >=4:
+            return ls[:2] == [128,134]
+
     def one_unknown(self, ls):
         if len(ls) >=4:
             return ls[:4] == [9,13,13,14]
@@ -244,12 +245,9 @@ class CompetitorInstance():
 
     def V_Rao_known(self,ls):
         if len(ls) >= 4:
-            for val in ls[:3]:
-                if val != 96:
-                    return False
-            if ls[3] < 100:
-                return False
-        return True
+            if len(set(ls[:3])) == 1 and set(ls[:3]) != {"skip"} and ls[3] > 100:
+                return True
+        return False
 
 
     def christie_known(self, ls, competitor):
@@ -284,11 +282,17 @@ class CompetitorInstance():
                 for val in ls[0:4]:
                     if val == "skip":
                         return False
+                # prevent clash with V_Rao and DEADBEEF
+                if set(ls[0:4]) == {79} or ls[0:2] == [261,100]:
+                    return False
                 for val in ls[4:min(len(ls), 10)]:
                     if val != "skip":
                         return False
                 return True
             elif len(ls) >= 4:
+                # prevent clash with V_Rao and DEADBEEF
+                if set(ls[0:4]) == {79}or ls[0:2] == [261,100]:
+                    return False
                 for val in ls[0:4]:
                     if val == "skip":
                         return False
@@ -398,11 +402,11 @@ class CompetitorInstance():
         competitors = [i for i in range(self.numplayers)]
 
         neverbid = []
+        deadbeef_known = []
         one_unknown = []
         one_known = []
         V_Rao_known = []
         christie_known = []
-
         pk_known = []
         larper_known = []
         large_skippers = []
@@ -416,6 +420,10 @@ class CompetitorInstance():
                 if self.neverbid(self.full_log[competitor]):
                     neverbid.append(competitor)
 
+                elif self.deadbeef_known(self.full_log[competitor]):
+                    deadbeef_known.append(competitor)
+                    known_val_bots.append(competitor)
+
                 elif self.one_known(self.full_log[competitor]):
                     one_known.append(competitor)
                     known_val_bots.append(competitor)
@@ -426,12 +434,14 @@ class CompetitorInstance():
                 elif self.V_Rao_known(self.full_log[competitor]):
                     V_Rao_known.append(competitor)
                     known_val_bots.append(competitor)
-                elif self.christie_known(self.full_log[competitor], competitor):
-                    christie_known.append(competitor)
-                    known_val_bots.append(competitor)
 
                 elif self.pk_known(self.full_log[competitor]):
                     pk_known.append(competitor)
+                    known_val_bots.append(competitor)
+
+                elif self.christie_known(self.full_log[competitor], competitor) and not pk_known:
+                    # need to prevent clash of pk and christie_known for the timebeing
+                    christie_known.append(competitor)
                     known_val_bots.append(competitor)
 
                 elif self.larper_known(self.full_log[competitor]) and not pk_known:
@@ -454,7 +464,9 @@ class CompetitorInstance():
                 elif self.NPC_prob[competitor] < 1e-3:
                     low_NPC_prob.append(competitor)
 
-        for opp_list in [neverbid, V_Rao_known, one_known, one_unknown, christie_known, pk_known, larper_known,
+        for opp_list in [neverbid, V_Rao_known, deadbeef_known,
+                         one_known, one_unknown, christie_known,
+                         pk_known, larper_known,
                          large_skippers, const_diff, large_jumps,
                          smallset, low_NPC_prob]:
             reportOppTeam.extend(opp_list)
@@ -463,6 +475,8 @@ class CompetitorInstance():
 
         if V_Rao_known:
             self.engine.print("V_Rao_known detected: " + str(V_Rao_known))
+        if deadbeef_known:
+            self.engine.print("one_known detected: " + str(deadbeef_known))
         if one_known:
             self.engine.print("one_known detected: " + str(one_known))
         if one_unknown:
@@ -488,14 +502,8 @@ class CompetitorInstance():
 
         self.engine.reportTeams(reportOwnTeam, reportOppTeam, known_val_bots)
 
-        # print(self.bid_diff_log)
-        # print("own: " + str(reportOwnTeam))
-        # print("self: " + str(self.index))
-        # print("big skippers: " + str(self.enemy_skippers))
-
         # variable resets
         del self.trueValue
-        del self.howMuch_log
         del self.known_bid_ally
         del self.other_allies
         del self.bid_index
@@ -503,8 +511,7 @@ class CompetitorInstance():
         for key in self.full_log.keys():
             self.engine.print(str(key) + "'s NPC prob: " + str(self.NPC_prob[key]))
 
-
-
+        self.howMuch_log = [1]
         self.NPC_prob = dict()
         self.last_bid_log = dict()
         self.full_log = dict()
