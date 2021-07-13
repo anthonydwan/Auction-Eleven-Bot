@@ -231,9 +231,6 @@ class CompetitorInstance():
     ####################################################################################
 
 
-    def deadbeef_known(self, ls):
-        if len(ls) >=4:
-            return ls[:2] == [128,134]
 
     def one_unknown(self, ls):
         if len(ls) >=4:
@@ -274,32 +271,32 @@ class CompetitorInstance():
         return False
 
 
-    def larper_known(self, ls):
-        #     # larper votes higher than NPC
-        if self.largeJumps(ls):
-            # four bids and skip rest
-            if len(ls) >= 8:
-                for val in ls[0:4]:
-                    if val == "skip":
-                        return False
-                # prevent clash with V_Rao and DEADBEEF
-                if set(ls[0:4]) == {79} or ls[0:2] == [261,100]:
-                    return False
-                for val in ls[4:min(len(ls), 10)]:
-                    if val != "skip":
-                        return False
-                return True
-            elif len(ls) >= 4:
-                # prevent clash with V_Rao and DEADBEEF
-                if set(ls[0:4]) == {79}or ls[0:2] == [261,100]:
-                    return False
-                for val in ls[0:4]:
-                    if val == "skip":
-                        return False
-                if self.trueValue is not None:
-                    if self.last_bid_log[self.whoMadeBid_log[-1]] == self.trueValue - 7:
-                        return True
-        return False
+    # def larper_known(self, ls):
+    #     #     # larper votes higher than NPC
+    #     if self.largeJumps(ls):
+    #         # four bids and skip rest
+    #         if len(ls) >= 8:
+    #             for val in ls[0:4]:
+    #                 if val == "skip":
+    #                     return False
+    #             # prevent clash with V_Rao
+    #             if set(ls[0:4]) == {79}:
+    #                 return False
+    #             for val in ls[4:min(len(ls), 10)]:
+    #                 if val != "skip":
+    #                     return False
+    #             return True
+    #         elif len(ls) >= 4:
+    #             # prevent clash with V_Rao
+    #             if set(ls[0:4]) == {79}:
+    #                 return False
+    #             for val in ls[0:4]:
+    #                 if val == "skip":
+    #                     return False
+    #             if self.trueValue is not None:
+    #                 if self.last_bid_log[self.whoMadeBid_log[-1]] == self.trueValue - 7:
+    #                     return True
+    #     return False
 
     def pk_known(self, ls):
         if len(ls) > 6:
@@ -402,7 +399,7 @@ class CompetitorInstance():
         competitors = [i for i in range(self.numplayers)]
 
         neverbid = []
-        deadbeef_known = []
+        # deadbeef_known = []
         one_unknown = []
         one_known = []
         V_Rao_known = []
@@ -420,9 +417,9 @@ class CompetitorInstance():
                 if self.neverbid(self.full_log[competitor]):
                     neverbid.append(competitor)
 
-                elif self.deadbeef_known(self.full_log[competitor]):
-                    deadbeef_known.append(competitor)
-                    known_val_bots.append(competitor)
+                # elif self.deadbeef_known(self.full_log[competitor]):
+                #     deadbeef_known.append(competitor)
+                #     known_val_bots.append(competitor)
 
                 elif self.one_known(self.full_log[competitor]):
                     one_known.append(competitor)
@@ -444,10 +441,10 @@ class CompetitorInstance():
                     christie_known.append(competitor)
                     known_val_bots.append(competitor)
 
-                elif self.larper_known(self.full_log[competitor]) and not pk_known:
-                    # need to prevent clash of pk and larper_known for the timebeing
-                    larper_known.append(competitor)
-                    known_val_bots.append(competitor)
+                # elif self.larper_known(self.full_log[competitor]) and not pk_known:
+                #     # need to prevent clash of pk and larper_known for the timebeing
+                #     larper_known.append(competitor)
+                #     known_val_bots.append(competitor)
 
                 elif self.large_skippers(self.full_log[competitor]):
                     large_skippers.append(competitor)
@@ -464,9 +461,9 @@ class CompetitorInstance():
                 elif self.NPC_prob[competitor] < 1e-3:
                     low_NPC_prob.append(competitor)
 
-        for opp_list in [neverbid, V_Rao_known, deadbeef_known,
+        for opp_list in [neverbid, V_Rao_known,
                          one_known, one_unknown, christie_known,
-                         pk_known, larper_known,
+                         pk_known,
                          large_skippers, const_diff, large_jumps,
                          smallset, low_NPC_prob]:
             reportOppTeam.extend(opp_list)
@@ -475,8 +472,8 @@ class CompetitorInstance():
 
         if V_Rao_known:
             self.engine.print("V_Rao_known detected: " + str(V_Rao_known))
-        if deadbeef_known:
-            self.engine.print("one_known detected: " + str(deadbeef_known))
+        # if deadbeef_known:
+        #     self.engine.print("one_known detected: " + str(deadbeef_known))
         if one_known:
             self.engine.print("one_known detected: " + str(one_known))
         if one_unknown:
@@ -487,8 +484,8 @@ class CompetitorInstance():
             self.engine.print("christie_known detected: " + str(christie_known))
         if pk_known:
             self.engine.print("pk_known detected: " + str(pk_known))
-        if larper_known:
-            self.engine.print("larperknown detected: " + str(larper_known))
+        # if larper_known:
+        #     self.engine.print("larperknown detected: " + str(larper_known))
         if large_skippers:
             self.engine.print("first10_roundSkipper detected: " + str(large_skippers))
         if const_diff:
