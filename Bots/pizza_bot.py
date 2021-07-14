@@ -233,16 +233,21 @@ class CompetitorInstance():
 
 
     def one_unknown(self, ls):
-        if len(ls) >=4:
-            return ls[:4] == [9,13,13,14]
+        if len(ls) >=6:
+            return ls[:6] == [10,16,16,16,16,16]
 
     def one_known(self, ls):
-        if len(ls) >=4:
-            return ls[:4] == [19,13,13,14]
+        if len(ls) >=6:
+            if ls[0] != [10]:
+                return False
+            for val in ls[1:6]:
+                if val == "skip" or val < 16:
+                    return False
+            return True
 
     def V_Rao_known(self,ls):
         if len(ls) >= 4:
-            if len(set(ls[:3])) == 1 and set(ls[:3]) != {"skip"} and ls[3] > 100:
+            if len(set(ls[:3])) == 1 and set(ls[:4]) != {"skip"} and ls[3] > 100:
                 return True
         return False
 
@@ -421,12 +426,12 @@ class CompetitorInstance():
                 #     deadbeef_known.append(competitor)
                 #     known_val_bots.append(competitor)
 
+                elif self.one_unknown(self.full_log[competitor]):
+                    one_unknown.append(competitor)
+
                 elif self.one_known(self.full_log[competitor]):
                     one_known.append(competitor)
                     known_val_bots.append(competitor)
-
-                elif self.one_unknown(self.full_log[competitor]):
-                    one_unknown.append(competitor)
 
                 elif self.V_Rao_known(self.full_log[competitor]):
                     V_Rao_known.append(competitor)
