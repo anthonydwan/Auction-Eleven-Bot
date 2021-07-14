@@ -12,8 +12,7 @@ to be done
     SmashBros - undetected
 
     make more accurate estimate of true value
-
-
+    note - Kaito (new) 14 July - >200, >200, <20, >200 (need to check for more confirmation for the range of values)
 """
 
 
@@ -394,7 +393,10 @@ class CompetitorInstance():
         self.engine.print(f"ROUND {self.round}")
         self.round += 1
 
-        reportOwnTeam = self.total_allies
+        if hasattr(self, "total_allies"):
+            reportOwnTeam = self.total_allies
+        else:
+            reportOwnTeam = []
         known_val_bots = []
         if self.known_bid_ally != -1:
             known_val_bots.append(self.known_bid_ally)
