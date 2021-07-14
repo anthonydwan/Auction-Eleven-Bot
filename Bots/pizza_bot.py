@@ -237,7 +237,7 @@ class CompetitorInstance():
 
     def one_known(self, ls):
         if len(ls) >=6:
-            if ls[0] != [10]:
+            if ls[0] != 10:
                 return False
             for val in ls[1:6]:
                 if val == "skip" or val < 16:
