@@ -115,7 +115,6 @@ class CompetitorInstance():
         else:
             self.mybot_trueValue = trueValue
 
-
         self.index = index
 
         # print("PIZZA BOT: " + str(self.index))
@@ -146,11 +145,11 @@ class CompetitorInstance():
                 NNPC_bid = 0.9
                 if self.howMuch_log[-1] < self.mean_val / 4:
                     pr = 0.64
-                elif 3/4*self.mean_val > self.howMuch_log[-1] > self.mean_val/4:
+                elif 3 / 4 * self.mean_val > self.howMuch_log[-1] > self.mean_val / 4:
                     pr = 0.16
-                elif self.howMuch_log[-1] > 3/4:
+                elif self.howMuch_log[-1] > 3 / 4:
                     pr = 0.04
-                self.NPC_prob[self.bid_index.val] = (1-pr)*prior / ((1-pr)*prior + (1-NNPC_bid)*(1-prior))
+                self.NPC_prob[self.bid_index.val] = (1 - pr) * prior / ((1 - pr) * prior + (1 - NNPC_bid) * (1 - prior))
                 self.bid_index = self.bid_index.next
 
         # the probability P(NPC|bid) = P(bid|NPC)*P(NPC) / [P(bid|NPC)*P(NPC) + P(bid|N-NPC)*P(N-NPC)]
@@ -162,7 +161,7 @@ class CompetitorInstance():
             pr = 0.16
         elif self.howMuch_log[-1] > 3 / 4:
             pr = 0.04
-        self.NPC_prob[whoMadeBid] = (pr * prior)/ (pr * prior + NNPC_bid*(1 - prior))
+        self.NPC_prob[whoMadeBid] = (pr * prior) / (pr * prior + NNPC_bid * (1 - prior))
 
         # logging last bid
         self.full_log[whoMadeBid].append(howMuch - self.curr_price)
@@ -336,7 +335,7 @@ class CompetitorInstance():
                 # self.instakill(lastBid)
                 #####################################################
                 # normal mode (before end of competition)
-                self.make_random_bid(lastBid,0, 80)
+                self.make_random_bid(lastBid, 0, 80)
 
             # need to make a third msg to identify allies
             else:
@@ -359,12 +358,9 @@ class CompetitorInstance():
                 for competitor in non_ally:
                     self.ally_trueValue.pop(competitor, None)
 
-
-
                 self.actual_trueValue, self.known_ally = self.detect_ally_trueVal(own_index=self.index,
                                                                                   own_trueVal=self.mybot_trueValue,
                                                                                   phase=self.phase)
-
 
                 #####################################################
                 # instakill mode (for end of competition)
@@ -375,7 +371,7 @@ class CompetitorInstance():
                 # self.instakill(lastBid)
                 #####################################################
                 # normal mode (before end of competition)
-                self.make_random_bid(lastBid,0, 80)
+                self.make_random_bid(lastBid, 0, 80)
                 #####################################################
 
             # already found values in turn 2
@@ -390,14 +386,14 @@ class CompetitorInstance():
                 # self.instakill(lastBid)
                 #####################################################
                 # normal mode (before end of competition)
-                self.make_random_bid(lastBid,0, 80)
+                self.make_random_bid(lastBid, 0, 80)
                 pass
 
         # post turn 3
         else:
-            pr = 15*self.turn
+            pr = 15 * self.turn
             if lastBid < self.actual_trueValue - 1000:
-                if self.engine.random.randint(0,100) > pr:
+                if self.engine.random.randint(0, 100) > pr:
                     self.instakill(lastBid)
                 else:
                     self.make_small_bid(lastBid)
@@ -412,11 +408,11 @@ class CompetitorInstance():
     ####################################################################################
 
     def one_unknown(self, ls):
-        if len(ls) >=6:
-            return ls[:6] == [10,16,16,16,16,16]
+        if len(ls) >= 6:
+            return ls[:6] == [10, 16, 16, 16, 16, 16]
 
     def one_known(self, ls):
-        if len(ls) >=6:
+        if len(ls) >= 6:
             if ls[0] != 10:
                 return False
             for val in ls[1:6]:
@@ -424,13 +420,12 @@ class CompetitorInstance():
                     return False
             return True
 
-    def V_Rao_known(self,ls):
+    def V_Rao_known(self, ls):
         if len(ls) >= 4:
             if len(set(ls[:3])) == 1 and set(ls[:4]) != {"skip"}:
                 if ls[3] != "skip" and ls[3] > 100:
                     return True
         return False
-
 
     def christie_known(self, ls, competitor):
         #     # larper votes higher than NPC
@@ -452,7 +447,6 @@ class CompetitorInstance():
                 if self.last_bid_log[self.whoMadeBid_log[-1]] == self.actual_trueValue - 7:
                     return True
         return False
-
 
     # def larper_known(self, ls):
     #     #     # larper votes higher than NPC
@@ -495,6 +489,9 @@ class CompetitorInstance():
                     return False
             return True
         return False
+
+    def sly_bid_known(self, competitor):
+        return self.last_bid_log[competitor] == self.actual_trueValue - 7
 
     def large_skippers(self, ls):
         # if first 10 turns all skip
@@ -553,15 +550,17 @@ class CompetitorInstance():
             non_known_teambots = [ally for ally in self.total_allies if ally != self.known_ally]
             remaining_enemies = [enemy for enemy in reportOppTeam if enemy not in reportKnownBots]
             if self.index == sorted(non_known_teambots)[1] or self.index == self.known_ally:
+                if self.phase == "phase_2:":
+                    for competitor in remaining_enemies:
+                        if self.last_bid_log[competitor] == self.actual_trueValue - 7:
+                            reportKnownBots.append(competitor)
+                    print("sly_bid_bot: " + str(competitor))
                 while len(reportKnownBots) < 3:
-                    rand_index = self.engine.random.randint(0, len(remaining_enemies)-1)
+                    rand_index = self.engine.random.randint(0, len(remaining_enemies) - 1)
                     reportKnownBots.append(remaining_enemies[rand_index])
                     self.engine.print("sly_report: " + str(remaining_enemies[rand_index]))
                     remaining_enemies.pop(rand_index)
         return reportKnownBots
-
-
-
 
     ##########################################################################
 
@@ -579,12 +578,10 @@ class CompetitorInstance():
         reportOppTeam = []
         reportKnownBots = []
 
-
         if hasattr(self, "total_allies"):
             reportOwnTeam.extend(self.total_allies)
         if hasattr(self, "known_ally"):
             reportKnownBots.append(self.known_ally)
-
 
         competitors = [i for i in range(self.numplayers)]
 
@@ -690,20 +687,20 @@ class CompetitorInstance():
         # one of the bots to take random guesses at KnownEnemyBots
         reportKnownBots = self.sly_report(reportKnownBots, reportOppTeam)
 
-
         self.engine.reportTeams(reportOwnTeam, reportOppTeam, reportKnownBots)
 
         if self.phase == "phase_2":
             avail_positions = [i for i in range(self.numplayers) if i not in self.total_allies]
-            self.engine.swapTo(avail_positions[self.engine.random.randint(0, self.numplayers - 1 - len(self.total_allies))])
+            self.engine.swapTo(
+                avail_positions[self.engine.random.randint(0, self.numplayers - 1 - len(self.total_allies))])
 
         # variable resets
         if hasattr(self, "known_ally"):
             del self.known_ally
         del self.bid_index
 
-        # for key in self.full_log.keys():
-        #     self.engine.print(str(key) + "'s NPC prob: " + str(self.NPC_prob[key]))
+        for key in self.full_log.keys():
+            self.engine.print(str(key) + "'s NPC prob: " + str(self.NPC_prob[key]))
 
         self.howMuch_log = [1]
         self.NPC_prob = dict()
@@ -711,6 +708,5 @@ class CompetitorInstance():
         self.full_log = dict()
         self.enemy_skippers = []
         self.whoMadeBid_log = []
-
 
         pass
