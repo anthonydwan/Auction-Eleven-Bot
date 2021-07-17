@@ -678,8 +678,9 @@ class CompetitorInstance():
 
         self.engine.reportTeams(reportOwnTeam, reportOppTeam, reportKnownBots)
 
-        avail_positions = [i for i in range(self.numplayers) if i not in self.total_allies]
-        self.engine.swapTo(avail_positions[self.engine.random.randint(0, self.numplayers - 1 - len(self.total_allies))])
+        if self.phase == "phase_2":
+            avail_positions = [i for i in range(self.numplayers) if i not in self.total_allies]
+            self.engine.swapTo(avail_positions[self.engine.random.randint(0, self.numplayers - 1 - len(self.total_allies))])
 
         # variable resets
         del self.known_ally
