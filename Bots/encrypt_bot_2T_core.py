@@ -52,10 +52,10 @@ class CompetitorInstance():
         self.enemy_skippers = []
         self.howMuch_log = [1]
         self.round = 0
-        self.shared_key = 1
+
         # buffer is needed to make sure it does not go negative
         self.bid_buffer = 20
-        self.num_bids = 0
+
         pass
 
     def onGameStart(self, engine, gameParameters):
@@ -127,7 +127,8 @@ class CompetitorInstance():
         pass
 
     ###############################################################################################################
-
+    # ally detection
+    ###############################################################################################################
     def modifier(self, player_index):
         output = (17 * player_index ** 2 + 19 + 13 * self.round ** 2) % 23 + 5
         return output
