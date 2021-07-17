@@ -7,14 +7,15 @@ to be done
     Change phase 2 small bid behaviour
     check benchmark gamma
     check detect NPCbots for phase 2
-    check instakill vs not outbid-self behaviour, check carl, deedbeef
+    check instakill vs not outbid-self behaviour,
+    check carl, deedbeef
     check edison
     check x-axis
     check ope nbookexams
     check thewrongjames
     check cupheadbuddies
     relytz
-    slybot (trueValue - 7)
+
 
     think about phase 2 - fake_known getting detected (think whether it is a good strat when everyone can bid that price)
 
@@ -382,7 +383,7 @@ class CompetitorInstance():
                 #####################################################
                 # normal mode (before end of competition)
                 # preventing outbidding from self
-                if self.whoMadeBid_log[-1] not in self.allies:
+                if self.whoMadeBid_log[-1] not in self.allies and self.engine.random.randint(0,100) > 66:
                     self.make_random_bid(lastBid, 0, 80)
                 #####################################################
 
@@ -399,21 +400,21 @@ class CompetitorInstance():
                 #####################################################
                 # normal mode (before end of competition)
                 # preventing outbidding from self
-                if self.whoMadeBid_log[-1] not in self.allies:
+                if self.whoMadeBid_log[-1] not in self.allies and self.engine.random.randint(0,100) > 66:
                     self.make_random_bid(lastBid, 0, 50)
                 pass
 
         # post turn 3
         else:
             pr = 12 * self.turn
-            if lastBid < self.actual_trueValue - 1000:
+            if lastBid < self.actual_trueValue - 2000:
                 # prevent outbidding from self
-                if self.whoMadeBid_log[-1] not in self.allies:
+                if self.whoMadeBid_log[-1] not in self.allies and self.engine.random.randint(0,100) > 66:
                     if self.engine.random.randint(0, 100) > pr:
                         self.instakill(lastBid)
-                else:
-                    self.make_small_bid(lastBid)
-            elif self.actual_trueValue - 1000 < lastBid < self.actual_trueValue:
+                    else:
+                        self.make_small_bid(lastBid)
+            elif self.actual_trueValue - 2000 < lastBid < self.actual_trueValue:
                 self.instakill(lastBid)
 
         self.turn += 1
@@ -581,10 +582,11 @@ class CompetitorInstance():
                     print("sly_bid_bot: " + str(competitor))
                 # randomly pick some enemy bot as known
                 while len(reportKnownBots) < 3:
-                    rand_index = self.engine.random.randint(0, len(remaining_enemies) - 1)
-                    reportKnownBots.append(remaining_enemies[rand_index])
-                    self.engine.print("sly_report: " + str(remaining_enemies[rand_index]))
-                    remaining_enemies.pop(rand_index)
+                    if len(remaining_enemies) > 0:
+                        rand_index = self.engine.random.randint(0, len(remaining_enemies) - 1)
+                        reportKnownBots.append(remaining_enemies[rand_index])
+                        self.engine.print("sly_report: " + str(remaining_enemies[rand_index]))
+                        remaining_enemies.pop(rand_index)
         return reportKnownBots
 
     ##########################################################################
