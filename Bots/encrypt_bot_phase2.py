@@ -552,7 +552,7 @@ class CompetitorInstance():
         if len(reportKnownBots) < 3:
             non_known_teambots = [ally for ally in self.total_allies if ally != self.known_ally]
             remaining_enemies = [enemy for enemy in reportOppTeam if enemy not in reportKnownBots]
-            if self.index == sorted(non_known_teambots)[1]:
+            if self.index == sorted(non_known_teambots)[1] or self.index == self.known_ally:
                 while len(reportKnownBots) < 3:
                     rand_index = self.engine.random.randint(0, len(remaining_enemies)-1)
                     reportKnownBots.append(remaining_enemies[rand_index])
