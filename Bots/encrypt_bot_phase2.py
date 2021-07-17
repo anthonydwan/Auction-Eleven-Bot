@@ -5,6 +5,7 @@ to be done
     need to overhaul detecting algorithms
 
     Change phase 2 small bid behaviour
+    check benchmark gamma
     check detect NPCbots for phase 2
     check instakill vs not outbid-self behaviour, check carl, deedbeef
     check edison
@@ -137,6 +138,11 @@ class CompetitorInstance():
         # whoMadeBid is the index of the player that made the bid
         # howMuch is the amount that the bid was
 
+
+        #########################################
+        # full bid log
+        #########################################
+
         if self.bid_index.val != whoMadeBid:
             while self.bid_index.val != whoMadeBid:
                 self.full_log[self.bid_index.val].append("skip")
@@ -167,6 +173,8 @@ class CompetitorInstance():
         self.full_log[whoMadeBid].append(howMuch - self.curr_price)
         self.curr_price = howMuch
         self.bid_index = self.bid_index.next
+
+        #######################################
 
         # logging who made last bid (list)
         if len(self.whoMadeBid_log) >= 5:
@@ -335,7 +343,9 @@ class CompetitorInstance():
                 # self.instakill(lastBid)
                 #####################################################
                 # normal mode (before end of competition)
-                self.make_random_bid(lastBid, 0, 80)
+                # preventing outbidding from self
+                if self.whoMadeBid_log[-1] not in self.allies:
+                    self.make_random_bid(lastBid, 0, 80)
 
             # need to make a third msg to identify allies
             else:
@@ -371,7 +381,9 @@ class CompetitorInstance():
                 # self.instakill(lastBid)
                 #####################################################
                 # normal mode (before end of competition)
-                self.make_random_bid(lastBid, 0, 80)
+                # preventing outbidding from self
+                if self.whoMadeBid_log[-1] not in self.allies:
+                    self.make_random_bid(lastBid, 0, 80)
                 #####################################################
 
             # already found values in turn 2
@@ -386,18 +398,22 @@ class CompetitorInstance():
                 # self.instakill(lastBid)
                 #####################################################
                 # normal mode (before end of competition)
-                self.make_random_bid(lastBid, 0, 80)
+                # preventing outbidding from self
+                if self.whoMadeBid_log[-1] not in self.allies:
+                    self.make_random_bid(lastBid, 0, 50)
                 pass
 
         # post turn 3
         else:
-            pr = 15 * self.turn
+            pr = 12 * self.turn
             if lastBid < self.actual_trueValue - 1000:
-                if self.engine.random.randint(0, 100) > pr:
-                    self.instakill(lastBid)
+                # prevent outbidding from self
+                if self.whoMadeBid_log[-1] not in self.allies:
+                    if self.engine.random.randint(0, 100) > pr:
+                        self.instakill(lastBid)
                 else:
                     self.make_small_bid(lastBid)
-            elif self.actual_trueValue - 1500 < lastBid < self.actual_trueValue:
+            elif self.actual_trueValue - 1000 < lastBid < self.actual_trueValue:
                 self.instakill(lastBid)
 
         self.turn += 1
@@ -550,11 +566,20 @@ class CompetitorInstance():
             non_known_teambots = [ally for ally in self.total_allies if ally != self.known_ally]
             remaining_enemies = [enemy for enemy in reportOppTeam if enemy not in reportKnownBots]
             if self.index == sorted(non_known_teambots)[1] or self.index == self.known_ally:
-                if self.phase == "phase_2:":
+                if self.phase == "phase_1":
+                # in phase 1, it is unlikely that sly_bid is made by a known Bot
                     for competitor in remaining_enemies:
                         if self.last_bid_log[competitor] == self.actual_trueValue - 7:
                             reportKnownBots.append(competitor)
+                            remaining_enemies.pop(rand_index)
+                elif self.phase == "phase_2:":
+                # in phase 2, it is very likely that sly_bid is made by a fake_known Bot
+                    for competitor in remaining_enemies:
+                        if self.last_bid_log[competitor] == self.actual_trueValue - 7:
+                            reportKnownBots.append(competitor)
+                            remaining_enemies.pop(rand_index)
                     print("sly_bid_bot: " + str(competitor))
+                # randomly pick some enemy bot as known
                 while len(reportKnownBots) < 3:
                     rand_index = self.engine.random.randint(0, len(remaining_enemies) - 1)
                     reportKnownBots.append(remaining_enemies[rand_index])
