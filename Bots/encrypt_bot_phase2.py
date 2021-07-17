@@ -546,9 +546,14 @@ class CompetitorInstance():
 
     def largeJumps(self, ls):
         ls = [val for val in ls if val != "skip"]
-        for value in ls:
-            if value > self.gameParameters["minimumBid"] * (1 + 2):
-                return True
+        if self.phase == "phase_1":
+            for value in ls:
+                if value > self.gameParameters["minimumBid"] * (1 + 2):
+                    return True
+        elif self.phase == "phase_2":
+            for value in ls:
+                if value > self.gameParameters["minimumBid"] * 30:
+                    return True
         return False
 
     def last10_consistent_diff(self, ls):
@@ -666,7 +671,7 @@ class CompetitorInstance():
                 elif self.last10_consistent_diff(self.full_log[competitor]):
                     const_diff.append(competitor)
 
-                elif self.phase == "phase_1" and self.largeJumps(self.full_log[competitor]):
+                elif self.largeJumps(self.full_log[competitor]):
                     large_jumps.append(competitor)
 
                 elif self.last10_smallset(self.full_log[competitor]):
