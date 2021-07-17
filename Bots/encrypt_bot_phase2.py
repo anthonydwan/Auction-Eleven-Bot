@@ -550,8 +550,9 @@ class CompetitorInstance():
         self.engine.print(f"ROUND {self.round}")
         self.round += 1
 
-        self.total_allies = self.allies
-        self.total_allies.append(self.index)
+        if hasattr(self, "allies"):
+            self.total_allies = self.allies
+            self.total_allies.append(self.index)
 
         reportOwnTeam = []
         reportOppTeam = []
