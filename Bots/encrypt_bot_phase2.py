@@ -1,14 +1,20 @@
 """
 to be done
 
+
+    need to overhaul detecting algorithms
+
     Change phase 2 small bid behaviour
     check detect NPCbots for phase 2
     check instakill vs not outbid-self behaviour, check carl, deedbeef
     check edison
     check x-axis
+    check openbookexams
+    check thewrongjames
     relytz
     slybot (trueValue - 7)
 
+    think about phase 2 - fake_known getting detected
 
 
 
@@ -541,6 +547,20 @@ class CompetitorInstance():
             return True
         return False
 
+    def sly_report(self, reportKnownBots, reportOppTeam):
+        if len(reportKnownBots) < 3:
+            non_known_teambots = [ally for ally in self.total_allies if ally != self.known_ally]
+            remaining_enemies = [enemy for enemy in reportOppTeam if enemy not in reportKnownBots]
+            if self.index == non_known_teambots[1]:
+                while len(reportKnownBots) < 3:
+                    rand_index = self.engine.random.randint(0, len(remaining_enemies)-1)
+                    reportKnownBots.append(remaining_enemies[rand_index])
+                    self.engine.print("sly_report: " + str(remaining_enemies[rand_index]))
+                    remaining_enemies.pop(rand_index)
+        return reportKnownBots
+
+
+
 
     ##########################################################################
 
@@ -667,13 +687,7 @@ class CompetitorInstance():
             self.engine.print("non-NPC bid distrib detected: " + str(low_NPC_prob))
 
         # one of the bots to take random guesses at KnownEnemyBots
-        # if len(reportKnownBots) < 3:
-        # if self.phase == "phase_1":
-        #     if self.index != self.known_ally:
-        #         remaining_enemies = [enemy for enemy in reportOppTeam if enemy not in reportKnownBots]
-        #         for i in range()
-
-
+        reportKnownBots = self.sly_report(reportKnownBots, reportOppTeam)
 
 
         self.engine.reportTeams(reportOwnTeam, reportOppTeam, reportKnownBots)
@@ -683,7 +697,8 @@ class CompetitorInstance():
             self.engine.swapTo(avail_positions[self.engine.random.randint(0, self.numplayers - 1 - len(self.total_allies))])
 
         # variable resets
-        del self.known_ally
+        if hasattr(self, "known_ally"):
+            del self.known_ally
         del self.bid_index
 
         # for key in self.full_log.keys():
