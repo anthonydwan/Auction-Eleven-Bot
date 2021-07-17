@@ -9,12 +9,13 @@ to be done
     check instakill vs not outbid-self behaviour, check carl, deedbeef
     check edison
     check x-axis
-    check openbookexams
+    check ope nbookexams
     check thewrongjames
+    check cupheadbuddies
     relytz
     slybot (trueValue - 7)
 
-    think about phase 2 - fake_known getting detected
+    think about phase 2 - fake_known getting detected (think whether it is a good strat when everyone can bid that price)
 
 
 
@@ -551,7 +552,7 @@ class CompetitorInstance():
         if len(reportKnownBots) < 3:
             non_known_teambots = [ally for ally in self.total_allies if ally != self.known_ally]
             remaining_enemies = [enemy for enemy in reportOppTeam if enemy not in reportKnownBots]
-            if self.index == non_known_teambots[1]:
+            if self.index == sorted(non_known_teambots)[1]:
                 while len(reportKnownBots) < 3:
                     rand_index = self.engine.random.randint(0, len(remaining_enemies)-1)
                     reportKnownBots.append(remaining_enemies[rand_index])
