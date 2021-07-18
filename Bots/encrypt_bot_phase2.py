@@ -3,7 +3,7 @@ to be done
 
 
     need to overhaul detecting algorithms
-
+    - fix one_known bug
     Change phase 2 small bid behaviour
     check benchmark gamma
     check detect NPCbots for phase 2
@@ -20,10 +20,10 @@ to be done
     think about phase 2 - fake_known getting detected (think whether it is a good strat when everyone can bid that price)
 
 
-
+    integrate better the sly_report + detection
 
     pk normal and larper_known, christie known also 4 value clashes
-    fully understand larper
+
 
     implement enemy detection at earlier stage of the game*
 
@@ -74,14 +74,8 @@ class CompetitorInstance():
     def __init__(self):
         # initialize personal variables
         self.last_bid_log = dict()
-
-        self.bids = [9, 11, 16]
-        self.true_val_bids = [9, 10, 13]
-        self.set_values = set(self.bids)
-        self.true_set_values = set(self.true_val_bids)
         self.full_log = dict()
         self.NPC_prob = dict()
-        self.enemy_skippers = []
         self.howMuch_log = [1]
         self.round = 0
 
@@ -113,13 +107,12 @@ class CompetitorInstance():
         self.whoMadeBid_log = []
 
         if trueValue == -1:
-            self.mybot_trueValue = self.mean_val - self.sd_val - 100
+            self.mybot_trueValue = -1
         else:
-            self.mybot_trueValue = trueValue
+            self.mybot_trueValue = trueValue - (self.mean_val - self.sd_val)
 
         self.index = index
 
-        # print("PIZZA BOT: " + str(self.index))
         # initalising full log and bid prob
         self.turn = 0
         self.full_log = dict()
@@ -211,7 +204,7 @@ class CompetitorInstance():
 
     def detect_ally_trueVal(self, own_index, own_trueVal, phase):
         # identifying allys and true bots:
-        self.ally_trueValue[own_index] = own_trueVal
+        self.ally_trueValue[own_index] = own_trueVal + self.mean_val - self.sd_val
         Counter = {trueVals: sum(value == trueVals for value in self.ally_trueValue.values()) for trueVals in
                    self.ally_trueValue.values()}
         self.actual_trueValue = 0
@@ -276,11 +269,10 @@ class CompetitorInstance():
     def onMyTurn(self, lastBid):
         # lastBid is the last bid that was made
         if self.turn == 0:
-
-            if self.mybot_trueValue > 9999:
-                trueValue_part1_msg = int(str(self.mybot_trueValue)[:3])
+            if self.mybot_trueValue == -1:
+                trueValue_part1_msg = 0
             else:
-                trueValue_part1_msg = int(str(self.mybot_trueValue)[:2])
+                trueValue_part1_msg = self.engine.math.floor(self.mybot_trueValue/100)
             self.engine.makeBid(
                 lastBid - self.private_key + 8 + self.bid_buffer + trueValue_part1_msg + self.modifier(self.index)
             )
@@ -298,10 +290,11 @@ class CompetitorInstance():
                 self.full_log[ally] and
                 # there must not have skipped
                 self.full_log[ally][0] != "skip" and
-                # range value digits must be within mean+/-sd range
-                self.engine.math.floor((self.mean_val - self.sd_val) / 100) - 1
-                <= (self.full_log[ally][0] - 8 - self.bid_buffer + self.private_key - self.modifier(ally))
-                <= int(self.engine.math.floor((self.mean_val + self.sd_val) / 100))}
+                # range value digits must be within 0/2sd range
+                0 <= (self.full_log[ally][0] - 8 - self.bid_buffer + self.private_key - self.modifier(ally))
+                <= self.engine.math.floor((2*self.sd_val)/100)}
+
+
             trueValue_part2_msg = int(str(self.mybot_trueValue)[-2:])
             self.engine.makeBid(
                 lastBid + self.private_key + 8 + self.bid_buffer + trueValue_part2_msg - self.modifier(self.index)
@@ -310,20 +303,24 @@ class CompetitorInstance():
             # find team's allies
             self.allies = [ally for ally in self.ally_msg1.keys()]
 
+
         elif self.turn == 2:
             # analysing msg2 from round 1:
             self.ally_trueValue = dict()
             for ally in self.allies:
                 if len(self.full_log[ally]) > 1 and self.full_log[ally][1] != "skip":
                     secret_val = (self.full_log[ally][1] - 8 - self.bid_buffer - self.private_key + self.modifier(ally))
-                    if 0 <= secret_val <= 99:
-                        if secret_val < 10:
+                    if -1 <= secret_val <= 99:
+                        if 0 <= secret_val < 10:
                             part2_val = "0" + str(secret_val)
                         else:
                             part2_val = str(secret_val)
-                        trueVal = int(str(self.ally_msg1[ally]) + part2_val)
-                        self.ally_trueValue[ally] = trueVal
-
+                        if secret_val == -1 and self.ally_msg1[ally] == 0:
+                            trueVal = secret_val
+                            self.ally_trueValue[ally] = trueVal + self.mean_val - self.sd_val
+                        elif secret_val > -1:
+                            trueVal = int(str(self.ally_msg1[ally]) + part2_val)
+                            self.ally_trueValue[ally] = trueVal + self.mean_val - self.sd_val
             # if self.gameParameters["phase"] == "phase_1":
 
             # re-calibrate ally list in case of failure
@@ -334,6 +331,8 @@ class CompetitorInstance():
                 self.actual_trueValue, self.known_ally = self.detect_ally_trueVal(own_index=self.index,
                                                                                   own_trueVal=self.mybot_trueValue,
                                                                                   phase=self.phase)
+
+
 
                 #####################################################
                 # instakill mode (for end of competition)
@@ -383,8 +382,9 @@ class CompetitorInstance():
                 #####################################################
                 # normal mode (before end of competition)
                 # preventing outbidding from self
-                if self.whoMadeBid_log[-1] not in self.allies and self.engine.random.randint(0,100) > 66:
+                if self.whoMadeBid_log[-1] not in self.allies or self.engine.random.randint(0,100) > 66:
                     self.make_random_bid(lastBid, 0, 80)
+
                 #####################################################
 
             # already found values in turn 2
@@ -400,16 +400,17 @@ class CompetitorInstance():
                 #####################################################
                 # normal mode (before end of competition)
                 # preventing outbidding from self
-                if self.whoMadeBid_log[-1] not in self.allies and self.engine.random.randint(0,100) > 66:
+                if self.whoMadeBid_log[-1] not in self.allies or self.engine.random.randint(0,100) > 66:
                     self.make_random_bid(lastBid, 0, 50)
                 pass
 
         # post turn 3
         else:
             pr = 12 * self.turn
+
             if lastBid < self.actual_trueValue - 2000:
                 # prevent outbidding from self
-                if self.whoMadeBid_log[-1] not in self.allies and self.engine.random.randint(0,100) > 66:
+                if self.whoMadeBid_log[-1] not in self.allies or self.engine.random.randint(0,100) > 66:
                     if self.engine.random.randint(0, 100) > pr:
                         self.instakill(lastBid)
                     else:
@@ -576,22 +577,24 @@ class CompetitorInstance():
                 # in phase 1, it is unlikely that sly_bid is made by a known Bot
                     for competitor in remaining_enemies:
                         if self.last_bid_log[competitor] == self.actual_trueValue - 7:
-                            reportKnownBots.append(competitor)
-                            remaining_enemies.pop(rand_index)
+                            self.engine.print(f"sly bot (phase 1) kicked: {remaining_enemies.index(competitor)}")
+                            remaining_enemies.pop(remaining_enemies.index(competitor))
                 elif self.phase == "phase_2:":
                 # in phase 2, it is very likely that sly_bid is made by a fake_known Bot
                     for competitor in remaining_enemies:
                         if self.last_bid_log[competitor] == self.actual_trueValue - 7:
                             reportKnownBots.append(competitor)
-                            remaining_enemies.pop(rand_index)
-                    print("sly_bid_bot: " + str(competitor))
+                            self.engine.print(f"sly bot (phase 2) added: {remaining_enemies.index(competitor)}")
+                            remaining_enemies.pop(remaining_enemies.index(competitor))
                 # randomly pick some enemy bot as known
-                while len(reportKnownBots) < 3:
-                    if len(remaining_enemies) > 0:
+                while len(reportKnownBots) < 3 and len(remaining_enemies) > 0:
+                    if len(remaining_enemies) == 1:
+                        rand_index = 0
+                    else:
                         rand_index = self.engine.random.randint(0, len(remaining_enemies) - 1)
-                        reportKnownBots.append(remaining_enemies[rand_index])
-                        self.engine.print("sly_report: " + str(remaining_enemies[rand_index]))
-                        remaining_enemies.pop(rand_index)
+                    reportKnownBots.append(remaining_enemies[rand_index])
+                    self.engine.print("sly_report: " + str(remaining_enemies[rand_index]))
+                    remaining_enemies.pop(rand_index)
         return reportKnownBots
 
     ##########################################################################
@@ -615,12 +618,11 @@ class CompetitorInstance():
         if hasattr(self, "known_ally"):
             reportKnownBots.append(self.known_ally)
 
-        competitors = [i for i in range(self.numplayers)]
+        competitors = [i for i in range(self.numplayers) if i not in reportOwnTeam]
 
         neverbid = []
         # deadbeef_known = []
         one_unknown = []
-        one_known = []
         V_Rao_known = []
         christie_known = []
         pk_known = []
@@ -632,56 +634,46 @@ class CompetitorInstance():
         low_NPC_prob = []
 
         for competitor in competitors:
-            if competitor not in reportOwnTeam:
-                if self.neverbid(self.full_log[competitor]):
-                    neverbid.append(competitor)
+            if self.neverbid(self.full_log[competitor]):
+                neverbid.append(competitor)
 
-                # elif self.deadbeef_known(self.full_log[competitor]):
-                #     deadbeef_known.append(competitor)
-                #     known_val_bots.append(competitor)
+            # elif self.deadbeef_known(self.full_log[competitor]):
+            #     deadbeef_known.append(competitor)
+            #     known_val_bots.append(competitor)
 
-                elif self.one_unknown(self.full_log[competitor]):
-                    one_unknown.append(competitor)
+            elif self.one_unknown(self.full_log[competitor]):
+                one_unknown.append(competitor)
 
-                elif self.one_known(self.full_log[competitor]):
-                    one_known.append(competitor)
-                    reportKnownBots.append(competitor)
+            elif self.V_Rao_known(self.full_log[competitor]):
+                V_Rao_known.append(competitor)
+                reportKnownBots.append(competitor)
 
-                elif self.V_Rao_known(self.full_log[competitor]):
-                    V_Rao_known.append(competitor)
-                    reportKnownBots.append(competitor)
+            elif self.pk_known(self.full_log[competitor]):
+                pk_known.append(competitor)
+                reportKnownBots.append(competitor)
 
-                elif self.pk_known(self.full_log[competitor]):
-                    pk_known.append(competitor)
-                    reportKnownBots.append(competitor)
+            elif self.christie_known(self.full_log[competitor], competitor) and not pk_known:
+                # need to prevent clash of pk and christie_known for the timebeing
+                christie_known.append(competitor)
+                reportKnownBots.append(competitor)
 
-                elif self.christie_known(self.full_log[competitor], competitor) and not pk_known:
-                    # need to prevent clash of pk and christie_known for the timebeing
-                    christie_known.append(competitor)
-                    reportKnownBots.append(competitor)
+            elif self.large_skippers(self.full_log[competitor]):
+                large_skippers.append(competitor)
 
-                # elif self.larper_known(self.full_log[competitor]) and not pk_known:
-                #     # need to prevent clash of pk and larper_known for the timebeing
-                #     larper_known.append(competitor)
-                #     known_val_bots.append(competitor)
+            elif self.last10_consistent_diff(self.full_log[competitor]):
+                const_diff.append(competitor)
 
-                elif self.large_skippers(self.full_log[competitor]):
-                    large_skippers.append(competitor)
+            elif self.largeJumps(self.full_log[competitor]):
+                large_jumps.append(competitor)
 
-                elif self.last10_consistent_diff(self.full_log[competitor]):
-                    const_diff.append(competitor)
+            elif self.last10_smallset(self.full_log[competitor]):
+                smallset.append(competitor)
 
-                elif self.largeJumps(self.full_log[competitor]):
-                    large_jumps.append(competitor)
-
-                elif self.last10_smallset(self.full_log[competitor]):
-                    smallset.append(competitor)
-
-                elif self.NPC_prob[competitor] < 1e-3:
-                    low_NPC_prob.append(competitor)
+            elif self.NPC_prob[competitor] < 1e-3:
+                low_NPC_prob.append(competitor)
 
         for opp_list in [neverbid, V_Rao_known,
-                         one_known, one_unknown, christie_known,
+                         one_unknown, christie_known,
                          pk_known,
                          large_skippers, const_diff, large_jumps,
                          smallset, low_NPC_prob]:
@@ -691,10 +683,6 @@ class CompetitorInstance():
 
         if V_Rao_known:
             self.engine.print("V_Rao_known detected: " + str(V_Rao_known))
-        # if deadbeef_known:
-        #     self.engine.print("one_known detected: " + str(deadbeef_known))
-        if one_known:
-            self.engine.print("one_known detected: " + str(one_known))
         if one_unknown:
             self.engine.print("one_unknown detected: " + str(one_unknown))
         if neverbid:
@@ -703,8 +691,6 @@ class CompetitorInstance():
             self.engine.print("christie_known detected: " + str(christie_known))
         if pk_known:
             self.engine.print("pk_known detected: " + str(pk_known))
-        # if larper_known:
-        #     self.engine.print("larperknown detected: " + str(larper_known))
         if large_skippers:
             self.engine.print("first10_roundSkipper detected: " + str(large_skippers))
         if const_diff:
@@ -738,7 +724,6 @@ class CompetitorInstance():
         self.NPC_prob = dict()
         self.last_bid_log = dict()
         self.full_log = dict()
-        self.enemy_skippers = []
         self.whoMadeBid_log = []
 
         pass
