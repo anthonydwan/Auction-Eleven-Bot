@@ -686,7 +686,8 @@ class CompetitorInstance():
         for i in range(len(competitors)-1):
             for j in range(i+1, len(competitors)):
                 if len(self.full_log[competitors[i]]) >=3 and len(self.full_log[competitors[j]])>=3:
-                    if self.full_log[competitors[i]][:3] == self.full_log[competitors[j]][:3]:
+                    if self.full_log[competitors[i]][:3] == self.full_log[competitors[j]][:3] and \
+                            self.full_log[competitors[i]][:3].count("skip") <= 1: # at most one skip
                         same_bid_pattern.append(competitors[i])
                         same_bid_pattern.append(competitors[j])
 
