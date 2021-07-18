@@ -1,11 +1,17 @@
 """
 to be done
+    save enemies in phase 1 and its mechanics
+
+
 
     reltyz - very fast in round 1 (since fixed positions)
     need to overhaul detecting algorithms
-    - fix one_known bug
     Change phase 2 small bid behaviour
+
+
+
     phase1
+        check one
         check x-axis
         check benchmark gamma
         check instakill vs not outbid-self behaviour,
@@ -101,7 +107,8 @@ class CompetitorInstance():
         self.phase = self.gameParameters["phase"]
         self.private_key = (int(self.engine.time.strftime("%M")) ** 2 + 29) % 7 + int(
             self.engine.time.strftime("%H")) ** 2 % 11 + 10
-
+        self.reportOppTeam = []
+        
     def onAuctionStart(self, index, trueValue):
         # index is the current player's index, that usually stays put from game to game
         # trueValue is -1 if this bot doesn't know the true value
@@ -308,8 +315,8 @@ class CompetitorInstance():
     #####################################################################################################################
 
     def onMyTurn(self, lastBid):
-        print(f"BOT {self.index}")
-        print(f"this is turn {self.turn}")
+        # print(f"BOT {self.index}")
+        # print(f"this is turn {self.turn}")
         # lastBid is the last bid that was made
         if self.turn == 0:
             if self.mybot_trueValue == -1:
@@ -608,10 +615,10 @@ class CompetitorInstance():
             return True
         return False
 
-    def sly_report(self, reportKnownBots, reportOppTeam):
+    def sly_report(self, reportKnownBots):
         if len(reportKnownBots) < 3 and hasattr(self, "known_ally"):
             non_known_teambots = [ally for ally in self.total_allies if ally != self.known_ally]
-            remaining_enemies = [enemy for enemy in reportOppTeam if enemy not in reportKnownBots]
+            remaining_enemies = [enemy for enemy in self.reportOppTeam if enemy not in reportKnownBots]
             if self.index == sorted(non_known_teambots)[1] or self.index == self.known_ally:
                 if self.phase == "phase_1":
                     # in phase 1, it is unlikely that sly_bid is made by a known Bot
@@ -650,7 +657,6 @@ class CompetitorInstance():
             self.total_allies.append(self.index)
 
         reportOwnTeam = []
-        reportOppTeam = []
         reportKnownBots = []
 
         if hasattr(self, "total_allies"):
@@ -717,9 +723,9 @@ class CompetitorInstance():
                          pk_known,
                          large_skippers, const_diff, large_jumps,
                          smallset, low_NPC_prob]:
-            reportOppTeam.extend(opp_list)
+            self.reportOppTeam.extend(opp_list)
 
-        reportOppTeam = list(set(reportOppTeam))
+        self.reportOppTeam = list(set(self.reportOppTeam))
 
         if V_Rao_known:
             self.engine.print("V_Rao_known detected: " + str(V_Rao_known))
@@ -743,9 +749,9 @@ class CompetitorInstance():
             self.engine.print("non-NPC bid distrib detected: " + str(low_NPC_prob))
 
         # one of the bots to take random guesses at KnownEnemyBots
-        reportKnownBots = self.sly_report(reportKnownBots, reportOppTeam)
+        reportKnownBots = self.sly_report(reportKnownBots)
 
-        self.engine.reportTeams(reportOwnTeam, reportOppTeam, reportKnownBots)
+        self.engine.reportTeams(reportOwnTeam, self.reportOppTeam, reportKnownBots)
 
         if self.phase == "phase_2":
             avail_positions = [i for i in range(self.numplayers) if i not in self.total_allies]
@@ -766,4 +772,6 @@ class CompetitorInstance():
         self.full_log = dict()
         self.whoMadeBid_log = []
 
+        if self.phase =="phase_2":
+            self.reportOppTeam = []
         pass
