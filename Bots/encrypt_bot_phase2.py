@@ -677,6 +677,7 @@ class CompetitorInstance():
         smallset = []
         low_NPC_prob = []
         same_bid_pattern = []
+        same_starting_bid = []
 
         ############################################################################
         # detecting enemies together:
@@ -690,7 +691,15 @@ class CompetitorInstance():
                             self.full_log[competitors[i]][:3].count("skip") <= 1: # at most one skip
                         same_bid_pattern.append(competitors[i])
                         same_bid_pattern.append(competitors[j])
+                elif self.full_log[competitors[i]][0] == self.full_log[competitors[j]][0] and \
+                        self.full_log[competitors[i]][0] != "skip" and \
+                        self.full_log[competitors[i]][0] > 100:
+                    same_starting_bid.append(competitors[i])
+                    same_starting_bid.append(competitors[j])
 
+        same_starting_bid = list(set(same_starting_bid))
+        if len(same_starting_bid) ==3:
+            self.reportOppTeam.extend(same_bid_pattern)
         same_bid_pattern = list(set(same_bid_pattern))
         self.reportOppTeam.extend(same_bid_pattern)
 
@@ -765,6 +774,8 @@ class CompetitorInstance():
             self.engine.print("largejump detected: " + str(large_jumps))
         if smallset:
             self.engine.print("last10_smallset detected: " + str(smallset))
+        if same_starting_bid:
+            self.engine.print(f"same first big bid pattern bots detected: {same_starting_bid}")
         if same_bid_pattern:
             self.engine.print(f"same first 3 bid pattern bots detected: {same_bid_pattern}")
         if low_NPC_prob:
