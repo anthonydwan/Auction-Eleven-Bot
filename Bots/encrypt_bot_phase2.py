@@ -497,18 +497,15 @@ class CompetitorInstance():
         if self.largeJumps(ls) and self.phase == "phase_1":
             # four bids and skip rest
             if len(ls) >= 8:
-                for val in ls[0:4]:
-                    if val == "skip":
-                        return False
+                if "skip" in ls[0:4]:
+                    return False
                 if set(ls[4:-1]) != {8}:
                     return False
-                if self.phase == and self.last_bid_log[competitor][-1] != self.actual_trueValue - 57:
-                    return False
-                return True
+                if self.last_bid_log[competitor][-1] == self.actual_trueValue - 57:
+                    return True
             elif len(ls) >= 4:
-                for val in ls[0:4]:
-                    if val == "skip":
-                        return False
+                if "skip" in ls[0:4]:
+                    return False
                 if self.last_bid_log[self.whoMadeBid_log[-1]] == self.actual_trueValue - 7:
                     return True
         elif self.phase == "phase_2":
@@ -518,8 +515,7 @@ class CompetitorInstance():
                 if ls[4] < 100:
                     return False
                 if set(ls[4:-1]) != {8}:
-                    return False
-                return True
+                    return True
         return False
 
     # def larper_known(self, ls):
