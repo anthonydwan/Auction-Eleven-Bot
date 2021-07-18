@@ -11,6 +11,7 @@ to be done
 
 
     phase1
+        check christie
         check one
         check x-axis
         check benchmark gamma
@@ -359,7 +360,6 @@ class CompetitorInstance():
             for ally in self.allies:
                 if len(self.full_log[ally]) > 1 and self.full_log[ally][1] != "skip":
                     secret_val = (self.full_log[ally][1] - 8 - self.bid_buffer - self.private_key + self.modifier(ally))
-                    print(f"secret_val: {secret_val}")
                     if -1 <= secret_val <= 99:
                         if 0 <= secret_val < 10:
                             part2_val = "0" + str(secret_val)
@@ -678,45 +678,67 @@ class CompetitorInstance():
         large_jumps = []
         smallset = []
         low_NPC_prob = []
+        same_bid_pattern = []
 
+        ############################################################################
+        # detecting enemies together:
+        ############################################################################
+        shortest_rounds = min(len(self.full_log[competitor]) for competitor in competitors)
+
+
+        if shortest_rounds > 2:
+            for i in range(len(competitors)-1):
+                for j in range(i+1, len(competitors)):
+                    if self.full_log[competitors[i]][:3] == self.full_log[competitors[j]][:3]:
+                        same_bid_pattern.append(competitors[i])
+                        same_bid_pattern.append(competitors[j])
+
+        same_bid_pattern = list(set(same_bid_pattern))
+        self.reportOppTeam.extend(same_bid_pattern)
+
+        ###########################################################################
+        # detecting enemy one by one
+        ###########################################################################
         for competitor in competitors:
-            if self.neverbid(self.full_log[competitor]):
-                neverbid.append(competitor)
+            if competitor not in self.reportOppTeam:
+                if self.neverbid(self.full_log[competitor]):
+                    neverbid.append(competitor)
 
-            # elif self.deadbeef_known(self.full_log[competitor]):
-            #     deadbeef_known.append(competitor)
-            #     known_val_bots.append(competitor)
+                # elif self.deadbeef_known(self.full_log[competitor]):
+                #     deadbeef_known.append(competitor)
+                #     known_val_bots.append(competitor)
 
-            elif self.one_unknown(self.full_log[competitor]):
-                one_unknown.append(competitor)
+                elif self.one_unknown(self.full_log[competitor]):
+                    one_unknown.append(competitor)
 
-            elif self.V_Rao_known(self.full_log[competitor]):
-                V_Rao_known.append(competitor)
-                reportKnownBots.append(competitor)
+                elif self.V_Rao_known(self.full_log[competitor]):
+                    V_Rao_known.append(competitor)
+                    reportKnownBots.append(competitor)
 
-            elif self.pk_known(self.full_log[competitor]):
-                pk_known.append(competitor)
-                reportKnownBots.append(competitor)
+                elif self.pk_known(self.full_log[competitor]):
+                    pk_known.append(competitor)
+                    reportKnownBots.append(competitor)
 
-            elif self.christie_known(self.full_log[competitor], competitor) and not pk_known:
-                # need to prevent clash of pk and christie_known for the timebeing
-                christie_known.append(competitor)
-                reportKnownBots.append(competitor)
+                elif self.christie_known(self.full_log[competitor], competitor) and not pk_known:
+                    # need to prevent clash of pk and christie_known for the timebeing
+                    christie_known.append(competitor)
+                    reportKnownBots.append(competitor)
 
-            elif self.large_skippers(self.full_log[competitor]):
-                large_skippers.append(competitor)
+                elif self.large_skippers(self.full_log[competitor]):
+                    large_skippers.append(competitor)
 
-            elif self.last10_consistent_diff(self.full_log[competitor]):
-                const_diff.append(competitor)
+                elif self.last10_consistent_diff(self.full_log[competitor]):
+                    const_diff.append(competitor)
 
-            elif self.largeJumps(self.full_log[competitor]):
-                large_jumps.append(competitor)
+                elif self.largeJumps(self.full_log[competitor]):
+                    large_jumps.append(competitor)
 
-            elif self.last10_smallset(self.full_log[competitor]):
-                smallset.append(competitor)
+                elif self.last10_smallset(self.full_log[competitor]):
+                    smallset.append(competitor)
 
-            elif self.NPC_prob[competitor] < 1e-3:
-                low_NPC_prob.append(competitor)
+                elif self.NPC_prob[competitor] < 1e-3:
+                    low_NPC_prob.append(competitor)
+
 
         for opp_list in [neverbid, V_Rao_known,
                          one_unknown, christie_known,
@@ -745,6 +767,8 @@ class CompetitorInstance():
             self.engine.print("largejump detected: " + str(large_jumps))
         if smallset:
             self.engine.print("last10_smallset detected: " + str(smallset))
+        if same_bid_pattern:
+            self.engine.print(f"same first 3 bid pattern bots detected: {same_bid_pattern}")
         if low_NPC_prob:
             self.engine.print("non-NPC bid distrib detected: " + str(low_NPC_prob))
 
