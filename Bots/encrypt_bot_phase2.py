@@ -1,20 +1,26 @@
 """
 to be done
 
-
+    reltyz - very fast in round 1 (since fixed positions)
     need to overhaul detecting algorithms
     - fix one_known bug
     Change phase 2 small bid behaviour
-    check benchmark gamma
-    check detect NPCbots for phase 2
-    check instakill vs not outbid-self behaviour,
-    check carl, deedbeef
-    check edison
-    check x-axis
-    check ope nbookexams
-    check thewrongjames
-    check cupheadbuddies
-    relytz
+    phase1
+        check x-axis
+        check benchmark gamma
+        check instakill vs not outbid-self behaviour,
+        check carl, deedbeef
+        check edison
+
+        check ope nbookexams
+        check thewrongjames
+        check cupheadbuddies
+    phase2
+        check detect NPCbots for phase 2
+        x-axis
+        christie
+        roshvenk
+
 
 
     think about phase 2 - fake_known getting detected (think whether it is a good strat when everyone can bid that price)
@@ -132,7 +138,6 @@ class CompetitorInstance():
         # whoMadeBid is the index of the player that made the bid
         # howMuch is the amount that the bid was
 
-
         #########################################
         # full bid log
         #########################################
@@ -224,55 +229,93 @@ class CompetitorInstance():
     #################################################################################################################
     # bidding behaviours
     #################################################################################################################
+
+    def bid_limit(self):
+        """return bid limit for each bot
+        depends on phase and whether the bot knows true value or not"""
+        if self.phase == "phase_1":
+            if self.known_ally != self.index:
+                return self.actual_trueValue
+            elif self.known_ally == self.index:
+                return self.actual_trueValue - 50
+        elif self.phase == "phase_2":
+            if self.known_ally == self.index:
+                return self.actual_trueValue
+            elif self.known_ally != self.index:
+                return self.actual_trueValue - 50
+
+    def bid_gate(self, lastBid):
+        """ whether minimum bid is within bid limit"""
+        return lastBid + 8 <= self.bid_limit()
+
+    def close_to_trueValue(self, lastBid, bid):
+        """whether the bid amount stays within the bid limit, otherwise bid at bid limit"""
+        max_limit = self.bid_limit()
+        if bid <= max_limit:
+            return bid
+        elif max_limit - 7 >= lastBid + 8:
+            bid = max_limit - 7
+        else:
+            bid = lastBid + 8
+        return bid
+
     def make_small_bid(self, lastBid):
-        if lastBid + 8 <= self.actual_trueValue:
+        """make a bid amount that is in a very low range"""
+        if self.bid_gate(lastBid):
             if self.phase == "phase_1":
                 bid = lastBid + 8 + self.engine.random.randint(0, 16)
-                bid = bid if bid <= self.actual_trueValue else self.actual_trueValue - 7
+                bid = self.close_to_trueValue(lastBid, bid)
             elif self.phase == "phase_2":  # NTS: CHANGE
-                bid = lastBid + 8 + self.engine.random.randint(0, 16)
-                bid = bid if bid <= self.actual_trueValue else self.actual_trueValue - 7
+                bid = lastBid + 8 + self.engine.random.randint(0, 20)
+                bid = self.close_to_trueValue(lastBid, bid)
             self.engine.makeBid(bid)
+        else:
+            pass
 
     def make_random_bid(self, lastBid, from_range, to_range):
-        if lastBid + 8 <= self.actual_trueValue:
-            if self.phase == "phase_1":
-                bid = lastBid + 8 + self.engine.random.randint(from_range, to_range)
-                # if random_bid is
-                bid = bid if bid <= self.actual_trueValue else self.actual_trueValue - 7
-            elif self.phase == "phase_2":  # NTS: CHANGE
-                bid = lastBid + 8 + self.engine.random.randint(from_range, to_range)
-                bid = bid if bid <= self.actual_trueValue else self.actual_trueValue - 7
+        """make a bid amount within the range randomly"""
+        if self.bid_gate(lastBid):
+            bid = lastBid + 8 + self.engine.random.randint(from_range, to_range)
+            # if random_bid is close
+            bid = self.close_to_trueValue(lastBid, bid)
             self.engine.makeBid(bid)
 
-    def instakill(self, lastBid):
-        if lastBid + 8 <= self.actual_trueValue:
+    def make_instakill_bid(self, lastBid):
+        """make an instakill bid if possible"""
+        if self.bid_gate(lastBid):
             # phase 1
             if self.phase == "phase_1":
+                # case 1: not known_ally and go for the kill
                 if self.known_ally != self.index:
-                    bid = max(self.actual_trueValue - 7, lastBid + 8)
-                    self.engine.makeBid(bid)
-                else:  # normal bid
-                    self.make_small_bid(lastBid)
+                    maxbid = max(self.actual_trueValue - 7, lastBid + 8)
+                    self.engine.makeBid(maxbid)
+                # case 2: known_ally, at most bid for trueVal - 50
+                elif self.known_ally == self.index:
+                    self.make_small_bid(lastBid=lastBid)
             # phase 2
             elif self.phase == "phase_2":
+                # case 1: fake_val ally go for the kill
                 if self.known_ally == self.index:
-                    bid = max(self.actual_trueValue - 7, lastBid + 8)
-                    self.engine.makeBid(bid)
-                else:  # normal bid
-                    self.make_small_bid(lastBid)
+                    # add randomness to hide from other bots
+                    maxbid = max(self.actual_trueValue - self.engine.random.randint(4, 7), lastBid + 8)
+                    self.engine.makeBid(maxbid)
+                # case 2: know trueVal ally, at most bid for trueVal - 50
+                elif self.known_ally != self.index:  # normal bid
+                    self.make_small_bid(lastBid=lastBid)
         else:
             pass
 
     #####################################################################################################################
 
     def onMyTurn(self, lastBid):
+        print(f"BOT {self.index}")
+        print(f"this is turn {self.turn}")
         # lastBid is the last bid that was made
         if self.turn == 0:
             if self.mybot_trueValue == -1:
                 trueValue_part1_msg = 0
             else:
-                trueValue_part1_msg = self.engine.math.floor(self.mybot_trueValue/100)
+                trueValue_part1_msg = self.engine.math.floor(self.mybot_trueValue / 100)
             self.engine.makeBid(
                 lastBid - self.private_key + 8 + self.bid_buffer + trueValue_part1_msg + self.modifier(self.index)
             )
@@ -292,8 +335,7 @@ class CompetitorInstance():
                 self.full_log[ally][0] != "skip" and
                 # range value digits must be within 0/2sd range
                 0 <= (self.full_log[ally][0] - 8 - self.bid_buffer + self.private_key - self.modifier(ally))
-                <= self.engine.math.floor((2*self.sd_val)/100)}
-
+                <= self.engine.math.floor((2 * self.sd_val) / 100)}
 
             trueValue_part2_msg = int(str(self.mybot_trueValue)[-2:])
             self.engine.makeBid(
@@ -310,6 +352,7 @@ class CompetitorInstance():
             for ally in self.allies:
                 if len(self.full_log[ally]) > 1 and self.full_log[ally][1] != "skip":
                     secret_val = (self.full_log[ally][1] - 8 - self.bid_buffer - self.private_key + self.modifier(ally))
+                    print(f"secret_val: {secret_val}")
                     if -1 <= secret_val <= 99:
                         if 0 <= secret_val < 10:
                             part2_val = "0" + str(secret_val)
@@ -332,15 +375,13 @@ class CompetitorInstance():
                                                                                   own_trueVal=self.mybot_trueValue,
                                                                                   phase=self.phase)
 
-
-
                 #####################################################
                 # instakill mode (for end of competition)
                 """
                 at the end of the competition:
                 activate instakill immediately
                 """
-                # self.instakill(lastBid)
+                # self.make_instakill_bid(lastBid)
                 #####################################################
                 # normal mode (before end of competition)
                 # preventing outbidding from self
@@ -378,11 +419,11 @@ class CompetitorInstance():
                 at the end of the competition:
                 activate instakill immediately here
                 """
-                # self.instakill(lastBid)
+                # self.make_instakill_bid(lastBid)
                 #####################################################
                 # normal mode (before end of competition)
                 # preventing outbidding from self
-                if self.whoMadeBid_log[-1] not in self.allies or self.engine.random.randint(0,100) > 66:
+                if self.whoMadeBid_log[-1] not in self.allies or self.engine.random.randint(0, 100) > 66:
                     self.make_random_bid(lastBid, 0, 80)
 
                 #####################################################
@@ -396,27 +437,26 @@ class CompetitorInstance():
                 activate instakill immediately
                 NTS: theoretically should already be initiated in turn 2 and no need in turn 3
                 """
-                # self.instakill(lastBid)
+                # self.make_instakill_bid(lastBid)
                 #####################################################
                 # normal mode (before end of competition)
                 # preventing outbidding from self
-                if self.whoMadeBid_log[-1] not in self.allies or self.engine.random.randint(0,100) > 66:
+                if self.whoMadeBid_log[-1] not in self.allies or self.engine.random.randint(0, 100) > 66:
                     self.make_random_bid(lastBid, 0, 50)
                 pass
 
         # post turn 3
         else:
             pr = 12 * self.turn
-
             if lastBid < self.actual_trueValue - 2000:
                 # prevent outbidding from self
-                if self.whoMadeBid_log[-1] not in self.allies or self.engine.random.randint(0,100) > 66:
+                if self.whoMadeBid_log[-1] not in self.allies or self.engine.random.randint(0, 100) > 66:
                     if self.engine.random.randint(0, 100) > pr:
-                        self.instakill(lastBid)
+                        self.make_instakill_bid(lastBid)
                     else:
                         self.make_small_bid(lastBid)
             elif self.actual_trueValue - 2000 < lastBid < self.actual_trueValue:
-                self.instakill(lastBid)
+                self.make_instakill_bid(lastBid)
 
         self.turn += 1
         pass
@@ -569,18 +609,18 @@ class CompetitorInstance():
         return False
 
     def sly_report(self, reportKnownBots, reportOppTeam):
-        if len(reportKnownBots) < 3:
+        if len(reportKnownBots) < 3 and hasattr(self, "known_ally"):
             non_known_teambots = [ally for ally in self.total_allies if ally != self.known_ally]
             remaining_enemies = [enemy for enemy in reportOppTeam if enemy not in reportKnownBots]
             if self.index == sorted(non_known_teambots)[1] or self.index == self.known_ally:
                 if self.phase == "phase_1":
-                # in phase 1, it is unlikely that sly_bid is made by a known Bot
+                    # in phase 1, it is unlikely that sly_bid is made by a known Bot
                     for competitor in remaining_enemies:
                         if self.last_bid_log[competitor] == self.actual_trueValue - 7:
                             self.engine.print(f"sly bot (phase 1) kicked: {remaining_enemies.index(competitor)}")
                             remaining_enemies.pop(remaining_enemies.index(competitor))
                 elif self.phase == "phase_2:":
-                # in phase 2, it is very likely that sly_bid is made by a fake_known Bot
+                    # in phase 2, it is very likely that sly_bid is made by a fake_known Bot
                     for competitor in remaining_enemies:
                         if self.last_bid_log[competitor] == self.actual_trueValue - 7:
                             reportKnownBots.append(competitor)
