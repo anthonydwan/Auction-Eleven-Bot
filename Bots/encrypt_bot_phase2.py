@@ -133,6 +133,7 @@ class CompetitorInstance():
         for k in range(self.numplayers):
             self.full_log[k] = []
             self.NPC_prob[k] = 0.25
+            self.last_bid_log[k] = []
         self.curr_price = 1
         self.bid_num = 0
 
@@ -198,14 +199,11 @@ class CompetitorInstance():
             self.howMuch_log.append(howMuch)
 
         # logging bots last bids
-        if whoMadeBid not in self.last_bid_log:
-            self.last_bid_log[whoMadeBid] = [howMuch]
+        if len(self.last_bid_log[whoMadeBid]) >= 10:
+            self.last_bid_log[whoMadeBid].pop(0)
+            self.last_bid_log[whoMadeBid].append(howMuch)
         else:
-            if len(self.last_bid_log[whoMadeBid]) >= 10:
-                self.last_bid_log[whoMadeBid].pop(0)
-                self.last_bid_log[whoMadeBid].append(howMuch)
-            else:
-                self.last_bid_log[whoMadeBid].append(howMuch)
+            self.last_bid_log[whoMadeBid].append(howMuch)
         pass
 
     ###############################################################################################################
@@ -685,10 +683,9 @@ class CompetitorInstance():
         ############################################################################
         shortest_rounds = min(len(self.full_log[competitor]) for competitor in competitors)
 
-
-        if shortest_rounds > 2:
-            for i in range(len(competitors)-1):
-                for j in range(i+1, len(competitors)):
+        for i in range(len(competitors)-1):
+            for j in range(i+1, len(competitors)):
+                if len(self.full_log[competitors[i]]) >=3 and len(self.full_log[competitors[j]])>=3:
                     if self.full_log[competitors[i]][:3] == self.full_log[competitors[j]][:3]:
                         same_bid_pattern.append(competitors[i])
                         same_bid_pattern.append(competitors[j])
