@@ -491,8 +491,10 @@ class CompetitorInstance():
         return False
 
     def christie_known(self, ls, competitor):
-        #     # larper votes higher than NPC
-        if self.largeJumps(ls):
+        """phase 1 only"""
+        #  larper votes higher than NPC
+
+        if self.largeJumps(ls) and self.phase == "phase_1":
             # four bids and skip rest
             if len(ls) >= 8:
                 for val in ls[0:4]:
@@ -500,7 +502,7 @@ class CompetitorInstance():
                         return False
                 if set(ls[4:-1]) != {8}:
                     return False
-                if self.last_bid_log[competitor][-1] != self.actual_trueValue - 57:
+                if self.phase == and self.last_bid_log[competitor][-1] != self.actual_trueValue - 57:
                     return False
                 return True
             elif len(ls) >= 4:
@@ -509,6 +511,15 @@ class CompetitorInstance():
                         return False
                 if self.last_bid_log[self.whoMadeBid_log[-1]] == self.actual_trueValue - 7:
                     return True
+        elif self.phase == "phase_2":
+            if len(ls) >= 6:
+                if "skip" in ls[0:4]:
+                    return False
+                if ls[4] < 100:
+                    return False
+                if set(ls[4:-1]) != {8}:
+                    return False
+                return True
         return False
 
     # def larper_known(self, ls):
@@ -613,10 +624,11 @@ class CompetitorInstance():
             return True
         return False
 
-    def sly_report(self, reportKnownBots):
+    def sly_report(self, reportKnownBots, exclusion_list):
         if len(reportKnownBots) < 3 and hasattr(self, "known_ally"):
             non_known_teambots = [ally for ally in self.total_allies if ally != self.known_ally]
-            remaining_enemies = [enemy for enemy in self.reportOppTeam if enemy not in reportKnownBots]
+            remaining_enemies = [enemy for enemy in self.reportOppTeam if enemy not in reportKnownBots or
+                                 enemy not in exclusion_list]
             if self.index == sorted(non_known_teambots)[1] or self.index == self.known_ally:
                 if self.phase == "phase_1":
                     # in phase 1, it is unlikely that sly_bid is made by a known Bot
@@ -678,6 +690,7 @@ class CompetitorInstance():
         low_NPC_prob = []
         same_bid_pattern = []
         same_starting_bid = []
+        christie_same = []
 
         ############################################################################
         # detecting enemies together:
@@ -686,6 +699,16 @@ class CompetitorInstance():
 
         for i in range(len(competitors)-1):
             for j in range(i+1, len(competitors)):
+                if len(self.full_log[competitors[i]]) >=4 and len(self.full_log[competitors[j]])>=4:
+                    if self.full_log[competitors[i]][2:4] == self.full_log[competitors[j]][2:4] and \
+                        "skip" not in self.full_log[competitors[i]][:4] and \
+                        self.full_log[competitors[i]][3] > 100 and \
+                        self.phase == "phase_2":
+                        # if bid 4 times,
+                        # the last number is always very large and
+                        # the last two are the same in phase_2:
+                        christie_same.append(competitors[i])
+                        christie_same.append(competitors[j])
                 if len(self.full_log[competitors[i]]) >=3 and len(self.full_log[competitors[j]])>=3:
                     if self.full_log[competitors[i]][:3] == self.full_log[competitors[j]][:3] and \
                             self.full_log[competitors[i]][:3].count("skip") <= 1: # at most one skip
@@ -697,6 +720,7 @@ class CompetitorInstance():
                     same_starting_bid.append(competitors[i])
                     same_starting_bid.append(competitors[j])
 
+        self.reportOppTeam.extend(christie_same)
         same_starting_bid = list(set(same_starting_bid))
         if len(same_starting_bid) ==3:
             self.reportOppTeam.extend(same_bid_pattern)
@@ -781,8 +805,11 @@ class CompetitorInstance():
         if low_NPC_prob:
             self.engine.print("non-NPC bid distrib detected: " + str(low_NPC_prob))
 
+
+        exclusion_list = []
+        exclusion_list.extend(christie_same)
         # one of the bots to take random guesses at KnownEnemyBots
-        reportKnownBots = self.sly_report(reportKnownBots)
+        reportKnownBots = self.sly_report(reportKnownBots, exclusion_list)
 
         self.engine.reportTeams(reportOwnTeam, self.reportOppTeam, reportKnownBots)
 
