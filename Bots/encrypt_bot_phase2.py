@@ -11,6 +11,8 @@ to be done
 
 
     phase1
+        sora
+        soil
         check christie (check phase1_christie_known)
         soil consolidation
         check one
@@ -33,7 +35,7 @@ to be done
     ###################################################################################
     FOUND PATTERNS
     phase 1
-        19th - kenl_unknown
+        19th - kenl_unknown (CHECK AGAIN)
     phase 2
         19th - kenl_team
 
@@ -738,7 +740,7 @@ class CompetitorInstance():
         self.reportOppTeam.extend(christie_same)
         same_starting_bid = list(set(same_starting_bid))
         if len(same_starting_bid) ==3:
-            self.reportOppTeam.extend(same_bid_pattern)
+            self.reportOppTeam.extend(same_starting_bid)
         same_bid_pattern = list(set(same_bid_pattern))
         self.reportOppTeam.extend(same_bid_pattern)
 
