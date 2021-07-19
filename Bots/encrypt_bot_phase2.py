@@ -703,7 +703,7 @@ class CompetitorInstance():
         smallset = []
         low_NPC_prob = []
         same_bid_pattern = []
-        same_starting_bid = []
+        same_large_1st_bid = []
         christie_same = []
         kenl_phase1_unknown = []
 
@@ -734,13 +734,13 @@ class CompetitorInstance():
                         self.full_log[competitors[i]][0] != "skip" and \
                         self.full_log[competitors[i]][0] > 100:
                     # kenl bot, the first numbers are huge and the same (for the first 3)
-                    same_starting_bid.append(competitors[i])
-                    same_starting_bid.append(competitors[j])
+                    same_large_1st_bid.append(competitors[i])
+                    same_large_1st_bid.append(competitors[j])
 
         self.reportOppTeam.extend(christie_same)
-        same_starting_bid = list(set(same_starting_bid))
-        if len(same_starting_bid) ==3:
-            self.reportOppTeam.extend(same_starting_bid)
+        same_large_1st_bid = list(set(same_large_1st_bid))
+        if len(same_large_1st_bid) ==3:
+            self.reportOppTeam.extend(same_large_1st_bid)
         same_bid_pattern = list(set(same_bid_pattern))
         self.reportOppTeam.extend(same_bid_pattern)
 
@@ -816,8 +816,8 @@ class CompetitorInstance():
             self.engine.print("last10_smallset detected: " + str(smallset))
         if kenl_phase1_unknown:
             self.engine.print("kenl_phase1_unknown detected: " + str(kenl_phase1_unknown))
-        if same_starting_bid:
-            self.engine.print(f"same first big bid pattern bots detected: {same_starting_bid}")
+        if same_large_1st_bid:
+            self.engine.print(f"same first big bid pattern bots detected: {same_large_1st_bid}")
         if same_bid_pattern:
             self.engine.print(f"same first 3 bid pattern bots detected: {same_bid_pattern}")
         if low_NPC_prob:
@@ -828,8 +828,10 @@ class CompetitorInstance():
         #########################################################################
 
         exclusion_list = []
-        if len(same_starting_bid) == 2 or len(same_starting_bid) ==4:
-            exclusion_list.extend(same_starting_bid)
+        if len(same_large_1st_bid) == 2 or len(same_large_1st_bid) ==4:
+            exclusion_list.extend(same_large_1st_bid)
+        if len(same_bid_pattern) == 2 or len(same_bid_pattern) ==4:
+            exclusion_list.extend(same_bid_pattern)
         exclusion_list.extend(christie_same)
         if kenl_phase1_unknown:
             exclusion_list.extend(kenl_phase1_unknown)
