@@ -621,7 +621,7 @@ class CompetitorInstance():
                     return True
         elif self.phase == "phase_2":
             for value in ls:
-                if value > self.gameParameters["minimumBid"] * 30:
+                if value > 100:
                     return True
         return False
 
