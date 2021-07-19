@@ -1,29 +1,39 @@
 """
 to be done
-    save enemies in phase 1 and its mechanics
+    implement the bid distribution of phase 2 and apply to bid number
 
 
 
-    reltyz -
+
     need to overhaul detecting algorithms
     Change phase 2 small bid behaviour
 
 
 
     phase1
-        check christie
+        check christie (check phase1_christie_known)
+        soil consolidation
         check one
-        check x-axis
+        check x-axis (missing one bot)
         check benchmark gamma
-        check instakill vs not outbid-self behaviour,
-        check carl, deedbeef
+        relytz
+
+        check carl,
         check edison
         check thewrongjames
     phase2
         check detect NPCbots for phase 2
-        x-axis
+        confirm christie bot OK
+        x-axis IMPORTANT
+        thewrongjames
+        check kenl
         christie
         roshvenk
+
+    ###################################################################################
+    FOUND PATTERNS
+    phase 1
+    phase 2
 
 
 
@@ -487,19 +497,21 @@ class CompetitorInstance():
                     return True
         return False
 
-    def christie_known(self, ls, competitor):
-        """phase 1 only"""
-        #  larper votes higher than NPC
 
+
+    def christie_known(self, ls, competitor):
+        #  larper votes higher than NPC
         if self.largeJumps(ls) and self.phase == "phase_1":
             # four bids and skip rest
             if len(ls) >= 8:
                 if "skip" in ls[0:4]:
                     return False
-                if set(ls[4:-1]) != {8}:
+                for val in ls[:3]:
+                    if val > 100:
+                        return False
+                if ls[3] < 100:
                     return False
-                if self.last_bid_log[competitor][-1] == self.actual_trueValue - 57:
-                    return True
+                return True
             elif len(ls) >= 4:
                 if "skip" in ls[0:4]:
                     return False
@@ -693,6 +705,7 @@ class CompetitorInstance():
         for i in range(len(competitors)-1):
             for j in range(i+1, len(competitors)):
                 if len(self.full_log[competitors[i]]) >=4 and len(self.full_log[competitors[j]])>=4:
+                    # christie_known in phase_2 (same values)
                     if self.full_log[competitors[i]][2:4] == self.full_log[competitors[j]][2:4] and \
                         "skip" not in self.full_log[competitors[i]][:4] and \
                         self.full_log[competitors[i]][3] > 100 and \
@@ -707,9 +720,10 @@ class CompetitorInstance():
                             self.full_log[competitors[i]][:3].count("skip") <= 1: # at most one skip
                         same_bid_pattern.append(competitors[i])
                         same_bid_pattern.append(competitors[j])
-                elif self.full_log[competitors[i]][0] == self.full_log[competitors[j]][0] and \
+                if self.full_log[competitors[i]][0] == self.full_log[competitors[j]][0] and \
                         self.full_log[competitors[i]][0] != "skip" and \
                         self.full_log[competitors[i]][0] > 100:
+                    # kenl bot, the first numbers are huge and the same (for the first 3)
                     same_starting_bid.append(competitors[i])
                     same_starting_bid.append(competitors[j])
 
@@ -800,7 +814,11 @@ class CompetitorInstance():
 
 
         exclusion_list = []
+        if len(same_starting_bid) == 2 or len(same_starting_bid) ==4:
+            exclusion_list.extend(same_starting_bid)
         exclusion_list.extend(christie_same)
+        if exclusion_list:
+            self.engine.print(exclusion_list)
         # one of the bots to take random guesses at KnownEnemyBots
         reportKnownBots = self.sly_report(reportKnownBots, exclusion_list)
 
