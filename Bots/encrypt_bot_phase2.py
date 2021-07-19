@@ -4,7 +4,7 @@ to be done
 
 
 
-    reltyz - very fast in round 1 (since fixed positions)
+    reltyz -
     need to overhaul detecting algorithms
     Change phase 2 small bid behaviour
 
@@ -18,10 +18,7 @@ to be done
         check instakill vs not outbid-self behaviour,
         check carl, deedbeef
         check edison
-
-        check ope nbookexams
         check thewrongjames
-        check cupheadbuddies
     phase2
         check detect NPCbots for phase 2
         x-axis
@@ -512,7 +509,7 @@ class CompetitorInstance():
             if len(ls) >= 6:
                 if "skip" in ls[0:4]:
                     return False
-                if ls[4] < 100:
+                if ls[3] < 100:
                     return False
                 if set(ls[4:-1]) != {8}:
                     return True
@@ -763,7 +760,7 @@ class CompetitorInstance():
                 elif self.last10_smallset(self.full_log[competitor]):
                     smallset.append(competitor)
 
-                elif self.NPC_prob[competitor] < 1e-3:
+                elif self.NPC_prob[competitor] < 0.001: #######################################################
                     low_NPC_prob.append(competitor)
 
 
