@@ -11,6 +11,7 @@ to be done
 
 
     phase1
+        kenl_unknown
         sora
         soil
         check christie (check phase1_christie_known)
@@ -35,9 +36,10 @@ to be done
     ###################################################################################
     FOUND PATTERNS
     phase 1
-        19th - kenl_unknown (CHECK AGAIN)
+        19th - kenl_unknown - the numbers are random, but it's always the same every round, also, although he bids big,
+        it is clear that he does not know the exact true value.
     phase 2
-        19th - kenl_team
+        19th - kenl_team - the first bid is a huge number
 
 
 
@@ -106,6 +108,9 @@ class CompetitorInstance():
         # buffer is needed to make sure it does not go negative
         self.bid_buffer = 20
 
+        # this will log the first few bids of every player in every game
+        self.super_log = dict()
+
         pass
 
     def onGameStart(self, engine, gameParameters):
@@ -119,6 +124,11 @@ class CompetitorInstance():
         self.phase = self.gameParameters["phase"]
         self.private_key = (int(self.engine.time.strftime("%M")) ** 2 + 29) % 7 + int(
             self.engine.time.strftime("%H")) ** 2 % 11 + 10
+
+        for k in range(self.numplayers):
+            self.super_log[k] = dict()
+
+
         self.reportOppTeam = []
         
     def onAuctionStart(self, index, trueValue):
@@ -623,7 +633,7 @@ class CompetitorInstance():
                     return True
         elif self.phase == "phase_2":
             for value in ls:
-                if value > 100:
+                if value > 140:
                     return True
         return False
 
@@ -674,6 +684,10 @@ class CompetitorInstance():
         # Now is the time to report team members, or do any cleanup.
 
         self.engine.print(f"ROUND {self.round}")
+
+        for k in range(self.numplayers):
+            self.super_log[k][self.round] = self.full_log[k][:min(2, len(self.full_log[k]))]
+
         self.round += 1
 
         if hasattr(self, "allies"):
@@ -836,7 +850,7 @@ class CompetitorInstance():
         if kenl_phase1_unknown:
             exclusion_list.extend(kenl_phase1_unknown)
         if exclusion_list:
-            self.engine.print(exclusion_list)
+            self.engine.print(f"exclusion_list: {exclusion_list}")
 
 
         exclusion_list = list(set(exclusion_list))
@@ -857,6 +871,11 @@ class CompetitorInstance():
 
         for key in self.full_log.keys():
             self.engine.print(str(key) + "'s NPC prob: " + str(self.NPC_prob[key]))
+
+
+
+
+
 
         self.howMuch_log = [1]
         self.NPC_prob = dict()
