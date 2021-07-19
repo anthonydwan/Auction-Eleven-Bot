@@ -33,7 +33,9 @@ to be done
     ###################################################################################
     FOUND PATTERNS
     phase 1
+        19th - kenl_unknown
     phase 2
+        19th - kenl_team
 
 
 
@@ -497,7 +499,12 @@ class CompetitorInstance():
                     return True
         return False
 
-
+    def kenl_phase1_unknown(self,ls):
+        if self.phase == "phase_1" and len(ls) >= 2:
+            if "skip" not in ls[:2]:
+                if ls[:2] == [16,11] or ls[:2] == [21,17]:
+                    return True
+        return False
 
     def christie_known(self, ls, competitor):
         #  larper votes higher than NPC
@@ -696,6 +703,7 @@ class CompetitorInstance():
         same_bid_pattern = []
         same_starting_bid = []
         christie_same = []
+        kenl_phase1_unknown = []
 
         ############################################################################
         # detecting enemies together:
@@ -742,9 +750,8 @@ class CompetitorInstance():
                 if self.neverbid(self.full_log[competitor]):
                     neverbid.append(competitor)
 
-                # elif self.deadbeef_known(self.full_log[competitor]):
-                #     deadbeef_known.append(competitor)
-                #     known_val_bots.append(competitor)
+                elif self.kenl_phase1_unknown(self.full_log[competitor]):
+                   kenl_phase1_unknown.append(competitor)
 
                 elif self.one_unknown(self.full_log[competitor]):
                     one_unknown.append(competitor)
@@ -781,7 +788,7 @@ class CompetitorInstance():
         for opp_list in [neverbid, V_Rao_known,
                          one_unknown, christie_known,
                          pk_known,
-                         large_skippers, const_diff, large_jumps,
+                         large_skippers, const_diff, large_jumps, kenl_phase1_unknown,
                          smallset, low_NPC_prob]:
             self.reportOppTeam.extend(opp_list)
 
@@ -805,6 +812,8 @@ class CompetitorInstance():
             self.engine.print("largejump detected: " + str(large_jumps))
         if smallset:
             self.engine.print("last10_smallset detected: " + str(smallset))
+        if kenl_phase1_unknown:
+            self.engine.print("kenl_phase1_unknown detected: " + str(kenl_phase1_unknown))
         if same_starting_bid:
             self.engine.print(f"same first big bid pattern bots detected: {same_starting_bid}")
         if same_bid_pattern:
@@ -812,13 +821,21 @@ class CompetitorInstance():
         if low_NPC_prob:
             self.engine.print("non-NPC bid distrib detected: " + str(low_NPC_prob))
 
+        #########################################################################
+        # exclusion list for sly_report
+        #########################################################################
 
         exclusion_list = []
         if len(same_starting_bid) == 2 or len(same_starting_bid) ==4:
             exclusion_list.extend(same_starting_bid)
         exclusion_list.extend(christie_same)
+        if kenl_phase1_unknown:
+            exclusion_list.extend(kenl_phase1_unknown)
         if exclusion_list:
             self.engine.print(exclusion_list)
+
+
+        exclusion_list = list(set(exclusion_list))
         # one of the bots to take random guesses at KnownEnemyBots
         reportKnownBots = self.sly_report(reportKnownBots, exclusion_list)
 
