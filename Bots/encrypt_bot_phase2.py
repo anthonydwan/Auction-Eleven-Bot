@@ -8,10 +8,13 @@ to be done
 
 
     phase1
+        roshvenk
+        check christie (check phase1_christie_known)!!!!!!!!!!!!
+        x_axis (not all of them)
         kenl_unknown
         sora
         soil
-        check christie (check phase1_christie_known)
+
         soil consolidation
         check one
         check x-axis (missing one bot)
@@ -39,7 +42,7 @@ to be done
         it is clear that he does not know the exact true value.
     phase 2
         note - Kaito (new) 14 July - >200, >200, <20, >200 (need to check for more confirmation for the range of values)
-
+        christie - 20th 2:30, unknown bots bid 4 times, the second 2 times are the same, does not have to be large
 
 
         sora - 20th 12PM, only bids after 3/4 skips (should not be a problem for later on)
@@ -87,7 +90,8 @@ class CompetitorInstance():
         # initialize personal variables
         self.last_bid_log = dict()
         self.full_log = dict()
-        self.NPC_prob = dict()
+        self.NPC_skip_prob = dict()
+        self.NPC_bid_amount_dist = dict()
         self.howMuch_log = [1]
         self.round = 0
 
@@ -138,7 +142,8 @@ class CompetitorInstance():
         self.full_log = dict()
         for k in range(self.numplayers):
             self.full_log[k] = []
-            self.NPC_prob[k] = 0.25
+            self.NPC_skip_prob[k] = 0.25
+            self.NPC_bid_amount_dist[k] = 0.25
             self.last_bid_log[k] = []
         self.curr_price = 1
         self.bid_num = 0
@@ -148,6 +153,75 @@ class CompetitorInstance():
             self.bid_index = self.rotation.find(self.gameParameters["bidOrder"][self.round])
 
         pass
+
+    ####################################################################################################################
+    # bayes calculations
+    ####################################################################################################################
+    def NPC_bayes_bid_distributions(self, howMuch, whoMadeBid):
+        """
+        # Bayesian Probability of NPC bid amount distribution
+        # the probability P(NPC|bid) = P(bid|NPC)*P(NPC) / [P(bid|NPC)*P(NPC) + P(bid|N-NPC)*P(N-NPC)]
+        :param howMuch: int
+        :param whoMadeBid: int
+        :return: float
+        """
+        if self.phase == "phase_2":
+            bid_dist_prior = self.NPC_bid_amount_dist[whoMadeBid]
+            bid_diff = howMuch - self.curr_price
+            if bid_diff in range(0, 60):
+                prob = 1 - 0.34595
+            elif bid_diff in range(60, 70):
+                prob = 0.34595
+            elif bid_diff in range(70, 80):
+                prob = 0.26342
+            elif bid_diff in range(80, 90):
+                prob = 0.19532
+            elif bid_diff in range(90, 100):
+                prob = 0.14124
+            elif bid_diff in range(100, 110):
+                prob = 0.09816
+            elif bid_diff in range(110, 120):
+                prob = 0.06697
+            elif bid_diff in range(120, 130):
+                prob = 0.04452
+            elif bid_diff in range(130, 140):
+                prob = 0.02846
+            else:
+                prob = 0.01741
+
+            NNPC_bid_dist = 0.9
+            self.NPC_bid_amount_dist[whoMadeBid] = (prob * bid_dist_prior) / (
+                    prob * bid_dist_prior + NNPC_bid_dist * (1 - bid_dist_prior))
+            return self.NPC_bid_amount_dist[whoMadeBid]
+        return 1
+
+    def NPC_bayes_bid_skip_probability(self, player, bidded):
+        """
+        # Bayesian Probability of NPC skipping
+
+        :param player: int, index of the player
+        :param bidded: boolean, False if skipped
+        :return: float: probability of NPC skipping/bidding
+        """
+        prior = self.NPC_skip_prob[player]
+        NNPC_bid = 0.9
+        # this should be the previous bid in the self.howMuch_log, the current lastBid is updated later
+        if self.howMuch_log[-1] < self.mean_val / 4:
+            pr = 0.64
+        elif 3 / 4 * self.mean_val > self.howMuch_log[-1] > self.mean_val / 4:
+            pr = 0.16
+        elif self.howMuch_log[-1] > 3 / 4:
+            pr = 0.04
+        if not bidded:
+            # P(NPC|not bid) = P(not bid|NPC)*P(NPC) / [P(not bid|NPC)*P(NPC) + P(not-bid|N-NPC)*P(N-NPC)]
+            self.NPC_skip_prob[player] = (1-pr) * prior / ((1-pr) * prior + (1 - NNPC_bid) * (1 - prior))
+        else:
+            # the probability P(NPC|bid) = P(bid|NPC)*P(NPC) / [P(bid|NPC)*P(NPC) + P(bid|N-NPC)*P(N-NPC)]
+            self.NPC_skip_prob[player] = pr * prior / (pr * prior + NNPC_bid * (1 - prior))
+        return self.NPC_skip_prob[player]
+
+
+    ####################################################################################################################
 
     def onBidMade(self, whoMadeBid, howMuch):
         # whoMadeBid is the index of the player that made the bid
@@ -160,28 +234,13 @@ class CompetitorInstance():
         if self.bid_index.val != whoMadeBid:
             while self.bid_index.val != whoMadeBid:
                 self.full_log[self.bid_index.val].append("skip")
-                # the probability P(NPC|not bid) = P(not bid|NPC)*P(NPC) / [P(not bid|NPC)*P(NPC) + P(not-bid|N-NPC)*P(N-NPC)]
-                prior = self.NPC_prob[self.bid_index.val]
-                NNPC_bid = 0.9
-                if self.howMuch_log[-1] < self.mean_val / 4:
-                    pr = 0.64
-                elif 3 / 4 * self.mean_val > self.howMuch_log[-1] > self.mean_val / 4:
-                    pr = 0.16
-                elif self.howMuch_log[-1] > 3 / 4:
-                    pr = 0.04
-                self.NPC_prob[self.bid_index.val] = (1 - pr) * prior / ((1 - pr) * prior + (1 - NNPC_bid) * (1 - prior))
+                # bayesian update for bot skipping
+                self.NPC_skip_prob[self.bid_index.val] = self.NPC_bayes_bid_skip_probability(player=self.bid_index.val,
+                                                                                             bidded=False)
                 self.bid_index = self.bid_index.next
 
-        # the probability P(NPC|bid) = P(bid|NPC)*P(NPC) / [P(bid|NPC)*P(NPC) + P(bid|N-NPC)*P(N-NPC)]
-        prior = self.NPC_prob[whoMadeBid]
-        NNPC_bid = 0.9
-        if self.howMuch_log[-1] < self.mean_val / 4:
-            pr = 0.64
-        elif 3 / 4 * self.mean_val > self.howMuch_log[-1] > self.mean_val / 4:
-            pr = 0.16
-        elif self.howMuch_log[-1] > 3 / 4:
-            pr = 0.04
-        self.NPC_prob[whoMadeBid] = (pr * prior) / (pr * prior + NNPC_bid * (1 - prior))
+        self.NPC_skip_prob[whoMadeBid] = self.NPC_bayes_bid_skip_probability(player=whoMadeBid, bidded=True)
+        self.NPC_bid_amount_dist[whoMadeBid] = self.NPC_bayes_bid_distributions(howMuch, whoMadeBid)
 
         # logging last bid
         self.full_log[whoMadeBid].append(howMuch - self.curr_price)
@@ -317,11 +376,9 @@ class CompetitorInstance():
         else:
             pass
 
-    #####################################################################################################################
-
     def onMyTurn(self, lastBid):
-        # print(f"BOT {self.index}")
-        # print(f"this is turn {self.turn}")
+        print(f"BOT {self.index}")
+        print(f"this is turn {self.turn}")
         # lastBid is the last bid that was made
         if self.turn == 0:
             if self.mybot_trueValue == -1:
@@ -684,12 +741,13 @@ class CompetitorInstance():
         const_diff = []
         large_jumps = []
         smallset = []
-        low_NPC_prob = []
         same_bid_pattern = []
         same_large_1st_bid = []
         christie_same = []
         kenl_phase1_unknown = []
         sora_phase2 = []
+        low_NPC_skip_prob = []
+        low_NPC_bid_amount_dist = []
 
         ############################################################################
         # detecting enemies together:
@@ -702,10 +760,8 @@ class CompetitorInstance():
                     # christie_known in phase_2 (same values)
                     if self.full_log[competitors[i]][2:4] == self.full_log[competitors[j]][2:4] and \
                             "skip" not in self.full_log[competitors[i]][:4] and \
-                            self.full_log[competitors[i]][3] > 100 and \
                             self.phase == "phase_2":
                         # if bid 4 times,
-                        # the last number is always very large and
                         # the last two are the same in phase_2:
                         christie_same.append(competitors[i])
                         christie_same.append(competitors[j])
@@ -770,15 +826,17 @@ class CompetitorInstance():
                 elif self.last10_smallset(self.full_log[competitor]):
                     smallset.append(competitor)
 
-                elif self.NPC_prob[competitor] < 0.001:  #######################################################
-                    low_NPC_prob.append(competitor)
+                elif self.NPC_skip_prob[competitor] < 0.001:
+                    low_NPC_skip_prob.append(competitor)
+                elif self.NPC_bid_amount_dist[competitor] < 0.001:
+                    low_NPC_bid_amount_dist.append(competitor)
 
         for opp_list in [neverbid, V_Rao_known,
                          one_unknown, christie_known,
                          pk_known,
                          large_skippers, const_diff, large_jumps,
                          kenl_phase1_unknown, sora_phase2,
-                         smallset, low_NPC_prob]:
+                         smallset, low_NPC_skip_prob, low_NPC_bid_amount_dist]:
             self.reportOppTeam.extend(opp_list)
 
         self.reportOppTeam = list(set(self.reportOppTeam))
@@ -811,8 +869,10 @@ class CompetitorInstance():
             self.engine.print(f"same first big bid pattern bots detected: {same_large_1st_bid}")
         if same_bid_pattern:
             self.engine.print(f"same first 3 bid pattern bots detected: {same_bid_pattern}")
-        if low_NPC_prob:
-            self.engine.print("non-NPC bid distrib detected: " + str(low_NPC_prob))
+        if low_NPC_skip_prob:
+            self.engine.print("non-NPC bid/skip detected: " + str(low_NPC_skip_prob))
+        if low_NPC_bid_amount_dist:
+            self.engine.print("non-NPC bid amount distrib detected: " + str(low_NPC_bid_amount_dist))
 
         #########################################################################
         # exclusion list for sly_report
@@ -846,10 +906,17 @@ class CompetitorInstance():
         del self.bid_index
 
         for key in self.full_log.keys():
-            self.engine.print(str(key) + "'s NPC prob: " + str(self.NPC_prob[key]))
+            self.engine.print(str(key) + "'s NPC prob: " + str(self.NPC_skip_prob[key]))
+
+        if self.phase == "phase_2":
+            for key in self.full_log.keys():
+                self.engine.print(str(key) + "'s NPC bid_dist: " + str(self.NPC_bid_amount_dist[key]))
+
+        print(self.full_log)
 
         self.howMuch_log = [1]
-        self.NPC_prob = dict()
+        self.NPC_skip_prob = dict()
+        self.NPC_bid_amount_dist = dict()
         self.last_bid_log = dict()
         self.full_log = dict()
         self.whoMadeBid_log = []
