@@ -541,7 +541,9 @@ class CompetitorInstance():
             for i in range(len(dc.keys())-1):
                 if len(dc[i]) < 3 or len(dc[i+1]) < 3:
                     return False
-                if dc[i][:3].count("skip") < 2 and dc[i][:3] == dc[i+1][:3]:
+                if dc[i][:2].count("skip") == 0 and dc[i][:2] == dc[i+1][:2]:
+                    return True
+                if dc[i][:3].count("skip") <= 1 and dc[i][:3] == dc[i+1][:3]:
                     return True
         return False
 
