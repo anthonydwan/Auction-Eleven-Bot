@@ -1,16 +1,13 @@
 """
 to be done
-    implement the bid distribution of phase 2 and apply to bid number
-    need to overhaul detecting algorithms
-    Change phase 2 small bid behaviour
-
-
+        very unlucky games - need round 4 to confirm
+        add first 2 values same
 
 
     phase1
         roshvenk
         check christie (check phase1_christie_known)!!!!!!!!!!!!
-        x_axis (not all of them)
+        x_axis (not all of them)!!!!
         kenl_unknown
         sora
         soil
@@ -112,13 +109,18 @@ class CompetitorInstance():
         self.mean_val = self.gameParameters["meanTrueValue"]
         self.sd_val = self.gameParameters["stddevTrueValue"]
         self.phase = self.gameParameters["phase"]
-        self.private_key = (int(self.engine.time.strftime("%M")) ** 2 + 29) % 7 + int(
-            self.engine.time.strftime("%H")) ** 2 % 11 + 10
+        self.private_key = (int(self.engine.time.strftime("%M")) ** 2 + 29) % 11 + int(
+            self.engine.time.strftime("%H")) ** 2 % 11 + 7
 
         for k in range(self.numplayers):
             self.super_log[k] = dict()
 
         self.reportOppTeam = []
+
+        for k in range(self.numplayers):
+            if self.phase == "phase_1":
+                self.NPC_skip_prob[k] = 0.25
+        pass
 
     def onAuctionStart(self, index, trueValue):
         # index is the current player's index, that usually stays put from game to game
@@ -142,7 +144,8 @@ class CompetitorInstance():
         self.full_log = dict()
         for k in range(self.numplayers):
             self.full_log[k] = []
-            self.NPC_skip_prob[k] = 0.25
+            if self.phase == "phase_2":
+                self.NPC_skip_prob[k] = 0.25
             self.NPC_bid_amount_dist[k] = 0.25
             self.last_bid_log[k] = []
         self.curr_price = 1
@@ -189,6 +192,8 @@ class CompetitorInstance():
             else:
                 prob = 0.01741
 
+
+            #P(NPC | bid) = P(bid | NPC) * P(NPC) / [P(bid | NPC) * P(NPC) + P(bid | N - NPC) * P(N - NPC)]
             NNPC_bid_dist = 0.9
             self.NPC_bid_amount_dist[whoMadeBid] = (prob * bid_dist_prior) / (
                     prob * bid_dist_prior + NNPC_bid_dist * (1 - bid_dist_prior))
@@ -246,8 +251,6 @@ class CompetitorInstance():
         self.full_log[whoMadeBid].append(howMuch - self.curr_price)
         self.curr_price = howMuch
         self.bid_index = self.bid_index.next
-
-        #######################################
 
         # logging who made last bid (list)
         if len(self.whoMadeBid_log) >= 5:
@@ -334,10 +337,10 @@ class CompetitorInstance():
         """make a bid amount that is in a very low range"""
         if self.bid_gate(lastBid):
             if self.phase == "phase_1":
-                bid = lastBid + 8 + self.engine.random.randint(0, 16)
+                bid = lastBid + 8 + self.engine.random.randint(0, 8)
                 bid = self.close_to_trueValue(lastBid, bid)
-            elif self.phase == "phase_2":  # NTS: CHANGE
-                bid = lastBid + 8 + self.engine.random.randint(0, 20)
+            elif self.phase == "phase_2":
+                bid = lastBid + 8 + self.engine.random.randint(0, 8)
                 bid = self.close_to_trueValue(lastBid, bid)
             self.engine.makeBid(bid)
         else:
@@ -377,8 +380,8 @@ class CompetitorInstance():
             pass
 
     def onMyTurn(self, lastBid):
-        print(f"BOT {self.index}")
-        print(f"this is turn {self.turn}")
+        # print(f"BOT {self.index}")
+        # print(f"this is turn {self.turn}")
         # lastBid is the last bid that was made
         if self.turn == 0:
             if self.mybot_trueValue == -1:
@@ -533,6 +536,26 @@ class CompetitorInstance():
     # enemy detection algorithms
     ####################################################################################
 
+    def repeated_bidding_pattern(self, dc):
+        if self.phase == "phase_1":
+            for i in range(len(dc.keys())-1):
+                if len(dc[i]) < 3 or len(dc[i+1]) < 3:
+                    return False
+                if dc[i][:3].count("skip") < 2 and dc[i][:3] == dc[i+1][:3]:
+                    return True
+        return False
+
+
+    def repeated_nonbidder(self, dc):
+        if self.phase == "phase_1":
+            for round in dc.keys():
+                if len(dc[round]) < 3:
+                    return False
+                if set(dc[round][:4]) != {"skip"}:
+                    return False
+            return True
+        return False
+
     def one_unknown(self, ls):
         if len(ls) >= 6:
             return ls[:6] == [10, 16, 16, 16, 16, 16]
@@ -571,7 +594,7 @@ class CompetitorInstance():
                     return True
         return False
 
-    def christie_known(self, ls, competitor):
+    def christie_known(self, ls):
         #  larper votes higher than NPC
         if self.largeJumps(ls) and self.phase == "phase_1":
             # four bids and skip rest
@@ -636,7 +659,7 @@ class CompetitorInstance():
             return len(set(ls[max(-10, -len(ls) + 2):])) <= 3
 
     def neverbid(self, ls):
-        if len(ls) > 12:
+        if len(ls) > 6:
             return set(ls) == {"skip"}
 
     def last10_sameValue(self, ls):
@@ -659,7 +682,7 @@ class CompetitorInstance():
                     return True
         elif self.phase == "phase_2":
             for value in ls:
-                if value > 135:
+                if value > 140:
                     return True
         return False
 
@@ -712,9 +735,9 @@ class CompetitorInstance():
         self.engine.print(f"ROUND {self.round}")
 
         for k in range(self.numplayers):
-            self.super_log[k][self.round] = self.full_log[k][:min(2, len(self.full_log[k]))]
+            self.super_log[k][self.round] = self.full_log[k][:min(5, len(self.full_log[k]))]
 
-        self.round += 1
+
 
         if hasattr(self, "allies"):
             self.total_allies = self.allies
@@ -746,6 +769,8 @@ class CompetitorInstance():
         christie_same = []
         kenl_phase1_unknown = []
         sora_phase2 = []
+        repeated_nonbidder = []
+        repeated_bidding_pattern = []
         low_NPC_skip_prob = []
         low_NPC_bid_amount_dist = []
 
@@ -809,7 +834,7 @@ class CompetitorInstance():
                 elif self.sora_phase2(self.full_log[competitor]):
                     sora_phase2.append(competitor)
 
-                elif self.christie_known(self.full_log[competitor], competitor) and not pk_known:
+                elif self.christie_known(self.full_log[competitor]) and not pk_known:
                     # need to prevent clash of pk and christie_known for the timebeing
                     christie_known.append(competitor)
                     reportKnownBots.append(competitor)
@@ -828,14 +853,20 @@ class CompetitorInstance():
 
                 elif self.NPC_skip_prob[competitor] < 0.001:
                     low_NPC_skip_prob.append(competitor)
-                elif self.NPC_bid_amount_dist[competitor] < 0.001:
-                    low_NPC_bid_amount_dist.append(competitor)
 
-        for opp_list in [neverbid, V_Rao_known,
-                         one_unknown, christie_known,
-                         pk_known,
-                         large_skippers, const_diff, large_jumps,
-                         kenl_phase1_unknown, sora_phase2,
+                # elif self.NPC_bid_amount_dist[competitor] < 0.001:
+                #     low_NPC_bid_amount_dist.append(competitor)
+
+                elif self.round == 1 and self.repeated_nonbidder(self.super_log[competitor]):
+                    repeated_nonbidder.append(competitor)
+
+                elif self.round == 1 and self.repeated_bidding_pattern(self.super_log[competitor]):
+                    repeated_bidding_pattern.append(competitor)
+
+        for opp_list in [neverbid, V_Rao_known, one_unknown,
+                         christie_known, pk_known, large_skippers,
+                         const_diff, large_jumps, kenl_phase1_unknown,
+                         sora_phase2, repeated_nonbidder, repeated_bidding_pattern,
                          smallset, low_NPC_skip_prob, low_NPC_bid_amount_dist]:
             self.reportOppTeam.extend(opp_list)
 
@@ -873,6 +904,10 @@ class CompetitorInstance():
             self.engine.print("non-NPC bid/skip detected: " + str(low_NPC_skip_prob))
         if low_NPC_bid_amount_dist:
             self.engine.print("non-NPC bid amount distrib detected: " + str(low_NPC_bid_amount_dist))
+        if repeated_nonbidder:
+            self.engine.print("repeated_nonbidder detected: " + str(repeated_nonbidder))
+        if repeated_bidding_pattern:
+            self.engine.print("repeated_bidding_pattern detected: " + str(repeated_bidding_pattern))
 
         #########################################################################
         # exclusion list for sly_report
@@ -886,6 +921,9 @@ class CompetitorInstance():
         exclusion_list.extend(christie_same)
         if kenl_phase1_unknown:
             exclusion_list.extend(kenl_phase1_unknown)
+        if repeated_nonbidder:
+            exclusion_list.extend(repeated_nonbidder)
+        exclusion_list = list(set(exclusion_list))
         if exclusion_list:
             self.engine.print(f"exclusion_list: {exclusion_list}")
 
@@ -894,6 +932,8 @@ class CompetitorInstance():
         reportKnownBots = self.sly_report(reportKnownBots, exclusion_list)
 
         self.engine.reportTeams(reportOwnTeam, self.reportOppTeam, reportKnownBots)
+
+        ###########################################################################
 
         if self.phase == "phase_2":
             avail_positions = [i for i in range(self.numplayers) if i not in self.total_allies]
@@ -912,10 +952,11 @@ class CompetitorInstance():
             for key in self.full_log.keys():
                 self.engine.print(str(key) + "'s NPC bid_dist: " + str(self.NPC_bid_amount_dist[key]))
 
-        print(self.full_log)
+        self.round += 1
 
         self.howMuch_log = [1]
-        self.NPC_skip_prob = dict()
+        if self.phase == "phase_2":
+            self.NPC_skip_prob = dict()
         self.NPC_bid_amount_dist = dict()
         self.last_bid_log = dict()
         self.full_log = dict()
