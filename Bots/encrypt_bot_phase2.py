@@ -21,7 +21,7 @@ to be done
         check carl,
         check edison
         check thewrongjames
-        think about phase 2 - fake_known getting detected (think whether it is a good strat when everyone can bid that price)
+        think about phase 2 - fake_known getting detected (think whether it is a good strat when everyone can bid that price - esp it )
     phase2
 
         TheLarpers
@@ -542,33 +542,6 @@ class CompetitorInstance():
                     return True
         return False
 
-    # def larper_known(self, ls):
-    #     #     # larper votes higher than NPC
-    #     if self.largeJumps(ls):
-    #         # four bids and skip rest
-    #         if len(ls) >= 8:
-    #             for val in ls[0:4]:
-    #                 if val == "skip":
-    #                     return False
-    #             # prevent clash with V_Rao
-    #             if set(ls[0:4]) == {79}:
-    #                 return False
-    #             for val in ls[4:min(len(ls), 10)]:
-    #                 if val != "skip":
-    #                     return False
-    #             return True
-    #         elif len(ls) >= 4:
-    #             # prevent clash with V_Rao
-    #             if set(ls[0:4]) == {79}:
-    #                 return False
-    #             for val in ls[0:4]:
-    #                 if val == "skip":
-    #                     return False
-    #             if self.trueValue is not None:
-    #                 if self.last_bid_log[self.whoMadeBid_log[-1]] == self.trueValue - 7:
-    #                     return True
-    #     return False
-
     def pk_known(self, ls):
         if len(ls) > 6:
             for val in ls[:2]:
@@ -629,7 +602,7 @@ class CompetitorInstance():
                     return True
         elif self.phase == "phase_2":
             for value in ls:
-                if value > 130:
+                if value > 135:
                     return True
         return False
 
@@ -832,6 +805,8 @@ class CompetitorInstance():
             self.engine.print("last10_smallset detected: " + str(smallset))
         if kenl_phase1_unknown:
             self.engine.print("kenl_phase1_unknown detected: " + str(kenl_phase1_unknown))
+        if christie_same:
+            self.engine.print("christie_same detected: " + str(christie_same))
         if same_large_1st_bid:
             self.engine.print(f"same first big bid pattern bots detected: {same_large_1st_bid}")
         if same_bid_pattern:
