@@ -1,12 +1,9 @@
 """
 to be done
     implement the bid distribution of phase 2 and apply to bid number
-
-
-
-
     need to overhaul detecting algorithms
     Change phase 2 small bid behaviour
+
 
 
 
@@ -24,12 +21,14 @@ to be done
         check carl,
         check edison
         check thewrongjames
+        think about phase 2 - fake_known getting detected (think whether it is a good strat when everyone can bid that price)
     phase2
-        check detect NPCbots for phase 2
-        confirm christie bot OK
-        x-axis IMPORTANT
+
+        TheLarpers
+        confirm christie bot OK??????????????????????????
+        x-axis IMPORTANT!!!!!!!!!!!!!!!
         thewrongjames
-        check kenl
+        check kenl -
         christie
         roshvenk
 
@@ -39,26 +38,13 @@ to be done
         19th - kenl_unknown - the numbers are random, but it's always the same every round, also, although he bids big,
         it is clear that he does not know the exact true value.
     phase 2
-        19th - kenl_team - the first bid is a huge number
+        note - Kaito (new) 14 July - >200, >200, <20, >200 (need to check for more confirmation for the range of values)
 
 
 
-    think about phase 2 - fake_known getting detected (think whether it is a good strat when everyone can bid that price)
+        sora - 20th 12PM, only bids after 3/4 skips (should not be a problem for later on)
 
 
-    integrate better the sly_report + detection
-
-    pk normal and larper_known, christie known also 4 value clashes
-
-
-    implement enemy detection at earlier stage of the game*
-
-    ogresunited - undetected
-    reltyz - undetected
-    x_axis - undetected
-    SmashBros - undetected
-
-    note - Kaito (new) 14 July - >200, >200, <20, >200 (need to check for more confirmation for the range of values)
 """
 
 
@@ -128,9 +114,8 @@ class CompetitorInstance():
         for k in range(self.numplayers):
             self.super_log[k] = dict()
 
-
         self.reportOppTeam = []
-        
+
     def onAuctionStart(self, index, trueValue):
         # index is the current player's index, that usually stays put from game to game
         # trueValue is -1 if this bot doesn't know the true value
@@ -504,17 +489,28 @@ class CompetitorInstance():
                     return False
             return True
 
+    def sora_phase2(self, ls):
+        if self.phase == "phase_2":
+            if len(ls) >= 6:
+                if ls[:3] == ["skip", "skip", "skip"] and "skip" not in ls[3:6]:
+                    return True
+            elif len(ls) >= 7:
+                if ls[:4] == ["skip", "skip", "skip", "skip"] and "skip" not in ls[4:7]:
+                    return True
+        return False
+
     def V_Rao_known(self, ls):
-        if len(ls) >= 4:
+        # phase_1 for now to prevent Sora in phase_2 mis-detection
+        if len(ls) >= 4 and self.phase == "phase_1":
             if len(set(ls[:3])) == 1 and set(ls[:4]) != {"skip"}:
                 if ls[3] != "skip" and ls[3] > 100:
                     return True
         return False
 
-    def kenl_phase1_unknown(self,ls):
+    def kenl_phase1_unknown(self, ls):
         if self.phase == "phase_1" and len(ls) >= 2:
             if "skip" not in ls[:2]:
-                if ls[:2] == [16,11] or ls[:2] == [21,17]:
+                if ls[:2] == [16, 11] or ls[:2] == [21, 17]:
                     return True
         return False
 
@@ -633,7 +629,7 @@ class CompetitorInstance():
                     return True
         elif self.phase == "phase_2":
             for value in ls:
-                if value > 140:
+                if value > 130:
                     return True
         return False
 
@@ -651,7 +647,7 @@ class CompetitorInstance():
     def sly_report(self, reportKnownBots, exclusion_list):
         if len(reportKnownBots) < 3 and hasattr(self, "known_ally"):
             non_known_teambots = [ally for ally in self.total_allies if ally != self.known_ally]
-            remaining_enemies = [enemy for enemy in self.reportOppTeam if enemy not in reportKnownBots or
+            remaining_enemies = [enemy for enemy in self.reportOppTeam if enemy not in reportKnownBots and
                                  enemy not in exclusion_list]
             if self.index == sorted(non_known_teambots)[1] or self.index == self.known_ally:
                 if self.phase == "phase_1":
@@ -663,7 +659,7 @@ class CompetitorInstance():
                 elif self.phase == "phase_2:":
                     # in phase 2, it is very likely that sly_bid is made by a fake_known Bot
                     for competitor in remaining_enemies:
-                        if self.last_bid_log[competitor] == self.actual_trueValue - 7:
+                        if 0 <= self.actual_trueValue - self.last_bid_log[competitor] <= 7:
                             reportKnownBots.append(competitor)
                             self.engine.print(f"sly bot (phase 2) added: {remaining_enemies.index(competitor)}")
                             remaining_enemies.pop(remaining_enemies.index(competitor))
@@ -720,28 +716,29 @@ class CompetitorInstance():
         same_large_1st_bid = []
         christie_same = []
         kenl_phase1_unknown = []
+        sora_phase2 = []
 
         ############################################################################
         # detecting enemies together:
         ############################################################################
         shortest_rounds = min(len(self.full_log[competitor]) for competitor in competitors)
 
-        for i in range(len(competitors)-1):
-            for j in range(i+1, len(competitors)):
-                if len(self.full_log[competitors[i]]) >=4 and len(self.full_log[competitors[j]])>=4:
+        for i in range(len(competitors) - 1):
+            for j in range(i + 1, len(competitors)):
+                if len(self.full_log[competitors[i]]) >= 4 and len(self.full_log[competitors[j]]) >= 4:
                     # christie_known in phase_2 (same values)
                     if self.full_log[competitors[i]][2:4] == self.full_log[competitors[j]][2:4] and \
-                        "skip" not in self.full_log[competitors[i]][:4] and \
-                        self.full_log[competitors[i]][3] > 100 and \
-                        self.phase == "phase_2":
+                            "skip" not in self.full_log[competitors[i]][:4] and \
+                            self.full_log[competitors[i]][3] > 100 and \
+                            self.phase == "phase_2":
                         # if bid 4 times,
                         # the last number is always very large and
                         # the last two are the same in phase_2:
                         christie_same.append(competitors[i])
                         christie_same.append(competitors[j])
-                if len(self.full_log[competitors[i]]) >=3 and len(self.full_log[competitors[j]])>=3:
+                if len(self.full_log[competitors[i]]) >= 3 and len(self.full_log[competitors[j]]) >= 3:
                     if self.full_log[competitors[i]][:3] == self.full_log[competitors[j]][:3] and \
-                            self.full_log[competitors[i]][:3].count("skip") <= 1: # at most one skip
+                            self.full_log[competitors[i]][:3].count("skip") <= 1:  # at most one skip
                         same_bid_pattern.append(competitors[i])
                         same_bid_pattern.append(competitors[j])
                 if self.full_log[competitors[i]][0] == self.full_log[competitors[j]][0] and \
@@ -753,7 +750,7 @@ class CompetitorInstance():
 
         self.reportOppTeam.extend(christie_same)
         same_large_1st_bid = list(set(same_large_1st_bid))
-        if len(same_large_1st_bid) ==3:
+        if len(same_large_1st_bid) == 3:
             self.reportOppTeam.extend(same_large_1st_bid)
         same_bid_pattern = list(set(same_bid_pattern))
         self.reportOppTeam.extend(same_bid_pattern)
@@ -767,7 +764,7 @@ class CompetitorInstance():
                     neverbid.append(competitor)
 
                 elif self.kenl_phase1_unknown(self.full_log[competitor]):
-                   kenl_phase1_unknown.append(competitor)
+                    kenl_phase1_unknown.append(competitor)
 
                 elif self.one_unknown(self.full_log[competitor]):
                     one_unknown.append(competitor)
@@ -779,6 +776,9 @@ class CompetitorInstance():
                 elif self.pk_known(self.full_log[competitor]):
                     pk_known.append(competitor)
                     reportKnownBots.append(competitor)
+
+                elif self.sora_phase2(self.full_log[competitor]):
+                    sora_phase2.append(competitor)
 
                 elif self.christie_known(self.full_log[competitor], competitor) and not pk_known:
                     # need to prevent clash of pk and christie_known for the timebeing
@@ -797,14 +797,14 @@ class CompetitorInstance():
                 elif self.last10_smallset(self.full_log[competitor]):
                     smallset.append(competitor)
 
-                elif self.NPC_prob[competitor] < 0.001: #######################################################
+                elif self.NPC_prob[competitor] < 0.001:  #######################################################
                     low_NPC_prob.append(competitor)
-
 
         for opp_list in [neverbid, V_Rao_known,
                          one_unknown, christie_known,
                          pk_known,
-                         large_skippers, const_diff, large_jumps, kenl_phase1_unknown,
+                         large_skippers, const_diff, large_jumps,
+                         kenl_phase1_unknown, sora_phase2,
                          smallset, low_NPC_prob]:
             self.reportOppTeam.extend(opp_list)
 
@@ -826,6 +826,8 @@ class CompetitorInstance():
             self.engine.print("last10_const_diff detected: " + str(const_diff))
         if large_jumps:
             self.engine.print("largejump detected: " + str(large_jumps))
+        if sora_phase2:
+            self.engine.print("sora_phase2 detected: " + str(sora_phase2))
         if smallset:
             self.engine.print("last10_smallset detected: " + str(smallset))
         if kenl_phase1_unknown:
@@ -842,16 +844,15 @@ class CompetitorInstance():
         #########################################################################
 
         exclusion_list = []
-        if len(same_large_1st_bid) == 2 or len(same_large_1st_bid) ==4:
+        if len(same_large_1st_bid) == 2 or len(same_large_1st_bid) == 4:
             exclusion_list.extend(same_large_1st_bid)
-        if len(same_bid_pattern) == 2 or len(same_bid_pattern) ==4:
+        if len(same_bid_pattern) == 2 or len(same_bid_pattern) == 4:
             exclusion_list.extend(same_bid_pattern)
         exclusion_list.extend(christie_same)
         if kenl_phase1_unknown:
             exclusion_list.extend(kenl_phase1_unknown)
         if exclusion_list:
             self.engine.print(f"exclusion_list: {exclusion_list}")
-
 
         exclusion_list = list(set(exclusion_list))
         # one of the bots to take random guesses at KnownEnemyBots
@@ -872,17 +873,12 @@ class CompetitorInstance():
         for key in self.full_log.keys():
             self.engine.print(str(key) + "'s NPC prob: " + str(self.NPC_prob[key]))
 
-
-
-
-
-
         self.howMuch_log = [1]
         self.NPC_prob = dict()
         self.last_bid_log = dict()
         self.full_log = dict()
         self.whoMadeBid_log = []
 
-        if self.phase =="phase_2":
+        if self.phase == "phase_2":
             self.reportOppTeam = []
         pass
