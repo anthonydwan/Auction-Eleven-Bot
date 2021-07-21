@@ -1,7 +1,8 @@
 """
 to be done
-        instakill - should leave some room for more points in phase_1 (but enough for a round)
-        think about phase 2 - fake_known getting detected (think whether it is a good strat when everyone can bid that price)
+        instakill
+            phase 1 - should leave some room for more points (but enough for a round) - why again?
+            phase 2 - fake_known getting detected (think whether it is a good strat when everyone can bid that price)
 
     phase1
         roshvenk
@@ -570,7 +571,7 @@ class CompetitorInstance():
     def VRao_known(self, competitor):
         if self.phase == "phase_1" and self.round == 0:
             ls = self.full_log[competitor]
-            if len(ls) >= 6 and all(val != "skip" for val in ls[:6]) and len(set(ls[:3])) == 1:
+            if len(ls) >= 6 and all(val != "skip" for val in ls[:6]) and len(set(ls[:3])) == 1 and len(set(ls[:6])) > 1:
                 return True
         return False
 
