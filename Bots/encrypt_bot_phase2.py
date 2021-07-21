@@ -37,8 +37,9 @@ to be done
     phase 1
         21/07 2:30PM: kenl known will bid 2 times and then just outbid, kenl_unknown only bid twice, the first two turns are random-ish number within 24
         21/07 2:30PM: One - have to bid 6 times, will not be a problem
-        21/07 3PM: Christie - random,random,skip,skip, 28
-
+        21/07 3PM: Christie (unknown) - random,random,skip,skip, 28
+        21/07 3PM: Christie (known) - random,random,number,big_num, 28
+        21/07 3PM: VRao - in round 1, bids same number 3 times for all teambots, then
 
     phase 2
         note - Kaito (new) 14 July - >200, >200, <20, >200 (need to check for more confirmation for the range of values)
@@ -539,9 +540,17 @@ class CompetitorInstance():
     # enemy detection algorithms
     ####################################################################################
 
+    def VRao_known(self, competitor):
+        if self.phase == "phase_1" and self.round == 0:
+            ls = self.full_log[competitor]
+            if len(ls) >= 6 and all(val != "skip" for val in ls[:6]) and len(set(ls[:3])) == 1:
+                    return True
+        return False
+
+
     def kenl_phase1_known(self,ls):
         if self.phase == "phase_1":
-            if len(ls) ==3 and\
+            if len(ls) == 3 and "skip" not in ls[0:2] and\
                     all(val < 25 for val in ls[0:2]) and\
                     self.actual_trueValue - 8 <= ls[2] <= self.actual_trueValue:
                 return True
@@ -588,14 +597,6 @@ class CompetitorInstance():
                     return True
             elif len(ls) >= 7:
                 if ls[:4] == ["skip", "skip", "skip", "skip"] and "skip" not in ls[4:7]:
-                    return True
-        return False
-
-    def V_Rao_known(self, ls):
-        # phase_1 for now to prevent Sora in phase_2 mis-detection
-        if len(ls) >= 4 and self.phase == "phase_1":
-            if len(set(ls[:3])) == 1 and set(ls[:4]) != {"skip"}:
-                if ls[3] != "skip" and ls[3] > 100:
                     return True
         return False
 
@@ -760,7 +761,7 @@ class CompetitorInstance():
         neverbid = []
         # deadbeef_known = []
         one_unknown = []
-        V_Rao_known = []
+        VRao_known = []
         christie_known = []
         pk_known = []
         larper_known = []
@@ -811,6 +812,12 @@ class CompetitorInstance():
         if len(same_large_1st_bid) == 3:
             self.reportOppTeam.extend(same_large_1st_bid)
         same_bid_pattern = list(set(same_bid_pattern))
+
+        if len(same_bid_pattern) ==3:
+            for bot in same_bid_pattern:
+                if self.VRao_known(bot):
+                    reportKnownBots.append(bot)
+                    VRao_known.append(bot)
         self.reportOppTeam.extend(same_bid_pattern)
 
         ###########################################################################
@@ -827,10 +834,6 @@ class CompetitorInstance():
 
                 elif self.one_unknown(self.full_log[competitor]):
                     one_unknown.append(competitor)
-
-                elif self.V_Rao_known(self.full_log[competitor]):
-                    V_Rao_known.append(competitor)
-                    reportKnownBots.append(competitor)
 
                 elif self.pk_known(self.full_log[competitor]):
                     pk_known.append(competitor)
@@ -871,7 +874,7 @@ class CompetitorInstance():
                 elif self.round == 1 and self.repeated_bidding_pattern(self.super_log[competitor]):
                     repeated_bidding_pattern.append(competitor)
 
-        for opp_list in [neverbid, V_Rao_known, one_unknown,
+        for opp_list in [neverbid, VRao_known, one_unknown,
                          christie_known, pk_known, large_skippers,
                          const_diff, large_jumps, kenl_phase1_known,
                          sora_phase2, repeated_nonbidder, repeated_bidding_pattern,
@@ -881,8 +884,8 @@ class CompetitorInstance():
         self.reportOppTeam = list(set(self.reportOppTeam))
 
 
-        if V_Rao_known:
-            self.engine.print("V_Rao_known detected: " + str(V_Rao_known))
+        if VRao_known:
+            self.engine.print("VRao_known detected: " + str(VRao_known))
         if one_unknown:
             self.engine.print("one_unknown detected: " + str(one_unknown))
         if neverbid:
@@ -930,7 +933,7 @@ class CompetitorInstance():
         if len(same_bid_pattern) == 2 or len(same_bid_pattern) == 4:
             exclusion_list.extend(same_bid_pattern)
         exclusion_list.extend(christie_phase2_same)
-        eclusion_list.extend(christie_phase1_unknown)
+        exclusion_list.extend(christie_phase1_unknown)
         if repeated_nonbidder:
             exclusion_list.extend(repeated_nonbidder)
         exclusion_list = list(set(exclusion_list))
