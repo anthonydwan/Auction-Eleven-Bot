@@ -50,6 +50,7 @@ to be done
         note - Kaito (new) 14 July - >200, >200, <20, >200 (need to check for more confirmation for the range of values)
         20/07 12:00PM: Sora only bids after 3/4 skips (should not be a problem for later on)
         20/07 2:30PM: Christie - unknown bots bid 4 times, the second 2 times are the same, does not have to be large
+        21/07 9:10PM: relytz definitely does not know the precise trueVal since it refused to bid, this will be important
 
 
 
@@ -410,13 +411,15 @@ class CompetitorInstance():
                 # case 1: fake_val ally go for the kill
                 if self.known_ally == self.index:
                     # add randomness to hide from other bots
-                    maxbid = max(self.actual_trueValue - self.engine.random.randint(4, 57), lastBid + 8)
+                    maxbid = max(self.actual_trueValue - self.engine.random.randint(4, 77), lastBid + 8)
+                    maxbid = self.close_to_trueValue(lastBid, maxbid)
                     self.engine.makeBid(maxbid)
                 # case 2: know trueVal ally, at most bid for trueVal - 50
                 elif self.known_ally != self.index:  # normal bid
                     maxbid = max(
-                        self.actual_trueValue - self.engine.random.randint(50, 100) - self.engine.random.randint(4, 7),
+                        self.actual_trueValue - self.engine.random.randint(50, 150) - self.engine.random.randint(4, 7),
                         lastBid + 8)
+                    maxbid = self.close_to_trueValue(lastBid, maxbid)
                     self.engine.makeBid(maxbid)
         else:
             pass
