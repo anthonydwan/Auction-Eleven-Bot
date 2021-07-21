@@ -691,7 +691,9 @@ class CompetitorInstance():
 
     def sly_bid_known(self, competitor):
         if hasattr(self, "actual_trueValue"):
-            return self.actual_trueValue <= self.last_bid_log[competitor] <= self.actual_trueValue - 7
+            if self.last_bid_log[competitor] and self.actual_trueValue <= self.last_bid_log[competitor][-1] <= self.actual_trueValue - 7:
+                return True
+        return False
 
     def large_skippers(self, ls):
         # if first 10 turns all skip
@@ -761,13 +763,13 @@ class CompetitorInstance():
                 if self.phase == "phase_1":
                     # in phase 1, it is unlikely that sly_bid is made by a known Bot
                     for competitor in remaining_enemies:
-                        if self.last_bid_log[competitor] == self.actual_trueValue - 7:
+                        if self.last_bid_log[competitor] and self.actual_trueValue <= self.last_bid_log[competitor][-1] <= self.actual_trueValue - 7:
                             self.engine.print(f"sly bot (phase 1) kicked: {remaining_enemies.index(competitor)}")
                             remaining_enemies.pop(remaining_enemies.index(competitor))
                 elif self.phase == "phase_2:":
                     # in phase 2, it is very likely that sly_bid is made by a fake_known Bot
                     for competitor in remaining_enemies:
-                        if 0 <= self.actual_trueValue - self.last_bid_log[competitor] <= 7:
+                        if self.last_bid_log[competitor] and 0 <= self.actual_trueValue - self.last_bid_log[competitor][-1] <= 7:
                             reportKnownBots.append(competitor)
                             self.engine.print(f"sly bot (phase 2) added: {remaining_enemies.index(competitor)}")
                             remaining_enemies.pop(remaining_enemies.index(competitor))
@@ -786,7 +788,6 @@ class CompetitorInstance():
 
     def onAuctionEnd(self):
         # Now is the time to report team members, or do any cleanup.
-
         self.engine.print(f"ROUND {self.round}")
 
         for k in range(self.numplayers):
