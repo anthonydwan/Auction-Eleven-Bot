@@ -2,7 +2,8 @@
 to be done
         phase_1 = self.allies should be saved
         instakill
-            phase 1 - should leave some room for more points (but enough for a round) - why again?
+            phase 1 - should leave some room for more points (but enough for a round)
+            consider whether hiding is a better strategy for phase_1 since you will get compounded detection.
             phase 2 - fake_known getting detected (think whether it is a good strat when everyone can bid that price) -
             see how people are winning phase 2 for reference
 
@@ -45,13 +46,12 @@ to be done
         21/07 3PM: VRao - in auction 0, bids same number 3 times for all teambots, then for known bot will make 3 more bids to relay trueVal,
         after first auction it'll stop doing that
 
-
     phase 2
         note - Kaito (new) 14 July - >200, >200, <20, >200 (need to check for more confirmation for the range of values)
         20/07 12:00PM: Sora only bids after 3/4 skips (should not be a problem for later on)
         20/07 2:30PM: Christie - unknown bots bid 4 times, the second 2 times are the same, does not have to be large
-        21/07 9:10PM: relytz definitely does not know the precise trueVal since it refused to bid, this will be important
-        21/07 9:30PM: Larper also overbids,
+        21/07 9:10PM: relytz may does not know the precise trueVal since it refused to bid, this may be important
+        21/07 9:30PM: Larper also overbids
 
 
 
@@ -695,7 +695,7 @@ class CompetitorInstance():
 
     def sly_bid_known(self, competitor):
         if hasattr(self, "actual_trueValue"):
-            if self.last_bid_log[competitor] and self.actual_trueValue <= self.last_bid_log[competitor][-1] <= self.actual_trueValue - 7:
+            if len(self.last_bid_log[competitor]) > 0 and self.actual_trueValue - 7 <= self.last_bid_log[competitor][-1] <= self.actual_trueValue:
                 return True
         return False
 
@@ -879,58 +879,56 @@ class CompetitorInstance():
         # detecting enemy one by one
         ###########################################################################
         for competitor in competitors:
-            if competitor not in self.reportOppTeam:
-                if self.neverbid(self.full_log[competitor]):
-                    neverbid.append(competitor)
+            if self.neverbid(self.full_log[competitor]):
+                neverbid.append(competitor)
 
-                elif self.kenl_phase1_known(self.full_log[competitor]):
-                    kenl_phase1_known.append(competitor)
+            elif self.kenl_phase1_known(self.full_log[competitor]):
+                kenl_phase1_known.append(competitor)
+                reportKnownBots.append(competitor)
+
+            elif self.one_unknown(self.full_log[competitor]):
+                one_unknown.append(competitor)
+
+            elif self.pk_known(self.full_log[competitor]):
+                pk_known.append(competitor)
+                reportKnownBots.append(competitor)
+
+            elif self.sora_phase2(self.full_log[competitor]):
+                sora_phase2.append(competitor)
+
+            elif self.christie_phase1_unknown(self.full_log[competitor]):
+                christie_phase1_unknown.append(competitor)
+
+            elif self.christie_known(self.full_log[competitor]) and not pk_known:
+                # need to prevent clash of pk and christie_known for the timebeing
+                christie_known.append(competitor)
+                reportKnownBots.append(competitor)
+
+            elif self.large_skippers(self.full_log[competitor]):
+                large_skippers.append(competitor)
+
+            elif self.last10_consistent_diff(self.full_log[competitor]):
+                const_diff.append(competitor)
+
+            elif self.largeJumps(self.full_log[competitor]):
+                large_jumps.append(competitor)
+
+            elif self.last10_smallset(self.full_log[competitor]):
+                smallset.append(competitor)
+
+            elif self.sly_bid_known(competitor):
+                sly_bid_known.append(competitor)
+                if self.phase == "phase_2":
                     reportKnownBots.append(competitor)
 
-                elif self.one_unknown(self.full_log[competitor]):
-                    one_unknown.append(competitor)
+            # elif self.NPC_bid_amount_dist[competitor] < 0.001:
+            #     low_NPC_bid_amount_dist.append(competitor)
 
-                elif self.pk_known(self.full_log[competitor]):
-                    pk_known.append(competitor)
-                    reportKnownBots.append(competitor)
+            elif self.round == 1 and self.repeated_nonbidder(self.super_log[competitor]):
+                repeated_nonbidder.append(competitor)
 
-                elif self.sora_phase2(self.full_log[competitor]):
-                    sora_phase2.append(competitor)
-
-                elif self.christie_phase1_unknown(self.full_log[competitor]):
-                    christie_phase1_unknown.append(competitor)
-
-                elif self.christie_known(self.full_log[competitor]) and not pk_known:
-                    # need to prevent clash of pk and christie_known for the timebeing
-                    christie_known.append(competitor)
-                    reportKnownBots.append(competitor)
-
-                elif self.large_skippers(self.full_log[competitor]):
-                    large_skippers.append(competitor)
-
-                elif self.last10_consistent_diff(self.full_log[competitor]):
-                    const_diff.append(competitor)
-
-                elif self.largeJumps(self.full_log[competitor]):
-                    large_jumps.append(competitor)
-
-                elif self.last10_smallset(self.full_log[competitor]):
-                    smallset.append(competitor)
-
-                elif self.sly_bid_known(competitor):
-                    sly_bid_known.append(competitor)
-                    if self.phase == "phase_2":
-                        reportKnownBots.append(competitor)
-
-
-                # elif self.NPC_bid_amount_dist[competitor] < 0.001:
-                #     low_NPC_bid_amount_dist.append(competitor)
-
-                elif self.round == 1 and self.repeated_nonbidder(self.super_log[competitor]):
-                    repeated_nonbidder.append(competitor)
-
-                elif self.round == 1 and self.repeated_bidding_pattern(self.super_log[competitor]):
-                    repeated_bidding_pattern.append(competitor)
+            elif self.round == 1 and self.repeated_bidding_pattern(self.super_log[competitor]):
+                repeated_bidding_pattern.append(competitor)
         ###################################################################################
         for opp_list in [neverbid, VRao_known, one_unknown,
                          christie_known, pk_known, large_skippers,
