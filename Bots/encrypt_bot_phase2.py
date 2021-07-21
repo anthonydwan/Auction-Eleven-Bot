@@ -51,6 +51,7 @@ to be done
         20/07 12:00PM: Sora only bids after 3/4 skips (should not be a problem for later on)
         20/07 2:30PM: Christie - unknown bots bid 4 times, the second 2 times are the same, does not have to be large
         21/07 9:10PM: relytz definitely does not know the precise trueVal since it refused to bid, this will be important
+        21/07 9:30PM: Larper also overbids,
 
 
 
@@ -690,7 +691,7 @@ class CompetitorInstance():
 
     def sly_bid_known(self, competitor):
         if hasattr(self, "actual_trueValue"):
-            return self.last_bid_log[competitor] == self.actual_trueValue - 7
+            return self.actual_trueValue <= self.last_bid_log[competitor] <= self.actual_trueValue - 7
 
     def large_skippers(self, ls):
         # if first 10 turns all skip
