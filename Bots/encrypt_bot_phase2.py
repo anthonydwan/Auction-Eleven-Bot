@@ -2,7 +2,8 @@
 to be done
         instakill
             phase 1 - should leave some room for more points (but enough for a round) - why again?
-            phase 2 - fake_known getting detected (think whether it is a good strat when everyone can bid that price)
+            phase 2 - fake_known getting detected (think whether it is a good strat when everyone can bid that price) -
+            see how people are winning phase 2 for reference
 
     phase1
         roshvenk
@@ -25,7 +26,6 @@ to be done
     phase2
         soil
         TheLarpers
-        confirm christie bot OK??????????????????????????
         x-axis IMPORTANT!!!!!!!!!!!!!!!
         thewrongjames
         check kenl -
@@ -39,7 +39,9 @@ to be done
         21/07 2:30PM: One - have to bid 6 times, will not be a problem
         21/07 3PM: Christie (unknown) - random,random,skip,skip, 28
         21/07 3PM: Christie (known) - random,random,number,big_num, 28
-        21/07 3PM: VRao - in round 1, bids same number 3 times for all teambots, then
+        21/07 3PM: VRao - in auction 0, bids same number 3 times for all teambots, then for known bot will make 3 more bids to relay trueVal,
+        after first auction it'll stop doing that
+
 
     phase 2
         note - Kaito (new) 14 July - >200, >200, <20, >200 (need to check for more confirmation for the range of values)
@@ -387,7 +389,8 @@ class CompetitorInstance():
                     self.engine.makeBid(maxbid)
                 # case 2: know trueVal ally, at most bid for trueVal - 50
                 elif self.known_ally != self.index:  # normal bid
-                    self.make_small_bid(lastBid=lastBid)
+                    maxbid = max(self.actual_trueValue - self.engine.random.randint(50, 100) - self.engine.random.randint(4, 7), lastBid + 8)
+                    self.engine.makeBid(maxbid)
         else:
             pass
 
@@ -395,7 +398,7 @@ class CompetitorInstance():
         pr = 12 * self.turn
         if lastBid < self.actual_trueValue - 2000:
             # prevent outbidding from self
-            if self.whoMadeBid_log[-1] not in self.allies or self.engine.random.randint(0, 100) > 66:
+            if self.whoMadeBid_log[-1] not in self.allies or self.engine.random.randint(0, 100) > 88:
                 if self.engine.random.randint(0, 100) > pr:
                     self.make_instakill_bid(lastBid)
                 else:
@@ -881,9 +884,6 @@ class CompetitorInstance():
                 elif self.last10_smallset(self.full_log[competitor]):
                     smallset.append(competitor)
 
-                elif self.NPC_skip_prob[competitor] < 0.001:
-                    low_NPC_skip_prob.append(competitor)
-
                 # elif self.NPC_bid_amount_dist[competitor] < 0.001:
                 #     low_NPC_bid_amount_dist.append(competitor)
 
@@ -892,15 +892,33 @@ class CompetitorInstance():
 
                 elif self.round == 1 and self.repeated_bidding_pattern(self.super_log[competitor]):
                     repeated_bidding_pattern.append(competitor)
-
+        ###################################################################################
         for opp_list in [neverbid, VRao_known, one_unknown,
                          christie_known, pk_known, large_skippers,
                          const_diff, large_jumps, kenl_phase1_known,
                          sora_phase2, repeated_nonbidder, repeated_bidding_pattern,
-                         smallset, low_NPC_skip_prob, christie_phase1_unknown]:
+                         smallset, christie_phase1_unknown]:
             self.reportOppTeam.extend(opp_list)
 
         self.reportOppTeam = list(set(self.reportOppTeam))
+        #####################################################################################
+        # finally do a low bid/skip prob:
+
+        sorted_skip_prob = sorted([competitor for competitor in competitors if competitor not in self.reportOppTeam], key = lambda k: self.NPC_skip_prob[k])
+        for competitor in sorted_skip_prob:
+            if self.NPC_skip_prob[competitor] < 0.005:
+                low_NPC_skip_prob.append(competitor)
+                sorted_skip_prob.remove(competitor)
+
+        if self.phase == "phase_2":
+            while len(self.reportOppTeam) < 6 and self.NPC_skip_prob[sorted_skip_prob[0]] < 0.0075:
+                low_NPC_skip_prob.append(sorted_skip_prob)
+                sorted_skip_prob.pop(0)
+
+        self.reportOppTeam.extend(low_NPC_skip_prob)
+        self.reportOppTeam = list(set(self.reportOppTeam))
+
+        ###################################################################################
 
         if VRao_known:
             self.engine.print("VRao_known detected: " + str(VRao_known))
