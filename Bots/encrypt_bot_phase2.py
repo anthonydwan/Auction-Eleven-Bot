@@ -1,8 +1,7 @@
 """
 to be done
-        very unlucky games - need round 4 to confirm
         instakill - should leave some room for more points in phase_1 (but enough for a round)
-
+        think about phase 2 - fake_known getting detected (think whether it is a good strat when everyone can bid that price)
 
     phase1
         roshvenk
@@ -21,7 +20,7 @@ to be done
         check carl,
         check edison
         check thewrongjames
-        think about phase 2 - fake_known getting detected (think whether it is a good strat when everyone can bid that price - esp it )
+
     phase2
 
         TheLarpers
@@ -43,10 +42,9 @@ to be done
 
     phase 2
         note - Kaito (new) 14 July - >200, >200, <20, >200 (need to check for more confirmation for the range of values)
-        christie - 20th 2:30, unknown bots bid 4 times, the second 2 times are the same, does not have to be large
-
-
-        sora - 20th 12PM, only bids after 3/4 skips (should not be a problem for later on)
+        20/07 12:00PM: Sora only bids after 3/4 skips (should not be a problem for later on)
+        20/07 2:30PM: Christie - unknown bots bid 4 times, the second 2 times are the same, does not have to be large
+        Christine -
 
 
 """
@@ -196,8 +194,7 @@ class CompetitorInstance():
             else:
                 prob = 0.01741
 
-
-            #P(NPC | bid) = P(bid | NPC) * P(NPC) / [P(bid | NPC) * P(NPC) + P(bid | N - NPC) * P(N - NPC)]
+            # P(NPC | bid) = P(bid | NPC) * P(NPC) / [P(bid | NPC) * P(NPC) + P(bid | N - NPC) * P(N - NPC)]
             NNPC_bid_dist = 0.9
             self.NPC_bid_amount_dist[whoMadeBid] = (prob * bid_dist_prior) / (
                     prob * bid_dist_prior + NNPC_bid_dist * (1 - bid_dist_prior))
@@ -223,12 +220,11 @@ class CompetitorInstance():
             pr = 0.04
         if not bidded:
             # P(NPC|not bid) = P(not bid|NPC)*P(NPC) / [P(not bid|NPC)*P(NPC) + P(not-bid|N-NPC)*P(N-NPC)]
-            self.NPC_skip_prob[player] = (1-pr) * prior / ((1-pr) * prior + (1 - NNPC_bid) * (1 - prior))
+            self.NPC_skip_prob[player] = (1 - pr) * prior / ((1 - pr) * prior + (1 - NNPC_bid) * (1 - prior))
         else:
             # the probability P(NPC|bid) = P(bid|NPC)*P(NPC) / [P(bid|NPC)*P(NPC) + P(bid|N-NPC)*P(N-NPC)]
             self.NPC_skip_prob[player] = pr * prior / (pr * prior + NNPC_bid * (1 - prior))
         return self.NPC_skip_prob[player]
-
 
     ####################################################################################################################
 
@@ -303,6 +299,17 @@ class CompetitorInstance():
             self.known_ally = list(self.ally_trueValue.keys())[
                 list(self.ally_trueValue.values()).index(fake_val)]
         return self.actual_trueValue, self.known_ally
+
+    def refine_ally_list(self, turn_no):
+        new_ally_ls = [ally for ally in self.ally_trueValue.keys() if
+                       # not empty
+                       len(self.full_log[ally]) > turn_no and
+                       # not skip
+                       self.full_log[ally][turn_no] != "skip" and
+                       # same key value
+                       self.full_log[ally][turn_no] - self.modifier(ally) == self.full_log[self.index][
+                           turn_no] - self.modifier(self.index)]
+        return new_ally_ls
 
     #################################################################################################################
     # bidding behaviours
@@ -382,6 +389,21 @@ class CompetitorInstance():
                     self.make_small_bid(lastBid=lastBid)
         else:
             pass
+
+    def post_turn3_bid(self, lastBid):
+        pr = 12 * self.turn
+        if lastBid < self.actual_trueValue - 2000:
+            # prevent outbidding from self
+            if self.whoMadeBid_log[-1] not in self.allies or self.engine.random.randint(0, 100) > 66:
+                if self.engine.random.randint(0, 100) > pr:
+                    self.make_instakill_bid(lastBid)
+                else:
+                    self.make_small_bid(lastBid)
+        elif self.actual_trueValue - 2000 < lastBid < self.actual_trueValue:
+            self.make_instakill_bid(lastBid)
+        pass
+
+    ########################################################################################################
 
     def onMyTurn(self, lastBid):
         # print(f"BOT {self.index}")
@@ -472,36 +494,35 @@ class CompetitorInstance():
             # re-calibrate ally list in case of failure (there may be more than 2) - this should be consistent across
             # all 3 bots - then we use turn 3 to remove the final bot.
             if len(self.allies) > 2:
-                self.allies = [ally for ally in self.ally_trueValue.keys() if
-                               # not empty
-                               len(self.full_log[ally]) > 2 and
-                               # not skip
-                               self.full_log[ally][2] != "skip" and
-                               # same key value
-                               self.full_log[ally][2] - self.modifier(ally) == self.full_log[self.index][
-                                   2] - self.modifier(self.index)]
+                self.allies = self.refine_ally_list(2)
+
                 non_ally = [key for key in self.ally_trueValue.keys() if key not in self.allies]
                 for competitor in non_ally:
                     self.ally_trueValue.pop(competitor, None)
 
-                self.actual_trueValue, self.known_ally = self.detect_ally_trueVal(own_index=self.index,
-                                                                                  own_trueVal=self.mybot_trueValue,
-                                                                                  phase=self.phase)
+                # in the case where successfully find allies after in 3rd turn
+                if len(self.allies) == 2:
+                    self.actual_trueValue, self.known_ally = self.detect_ally_trueVal(own_index=self.index,
+                                                                                      own_trueVal=self.mybot_trueValue,
+                                                                                      phase=self.phase)
 
-                #####################################################
-                # instakill mode (for end of competition)
-                """
-                at the end of the competition:
-                activate instakill immediately here
-                """
-                # self.make_instakill_bid(lastBid)
-                #####################################################
-                # normal mode (before end of competition)
-                # preventing outbidding from self
-                if self.whoMadeBid_log[-1] not in self.allies or self.engine.random.randint(0, 100) > 66:
-                    self.make_random_bid(lastBid, 0, 80)
+                    #####################################################
+                    # instakill mode (for end of competition)
+                    """
+                    at the end of the competition:
+                    activate instakill immediately here
+                    """
+                    # self.make_instakill_bid(lastBid)
+                    #####################################################
+                    # normal mode (before end of competition)
+                    # preventing outbidding from self
+                    if self.whoMadeBid_log[-1] not in self.allies or self.engine.random.randint(0, 100) > 66:
+                        self.make_random_bid(lastBid, 0, 80)
 
-                #####################################################
+                    #####################################################
+                # very unfortunate case needs another prompt
+                else:
+                    self.engine.makeBid(lastBid + 9 + self.modifier(self.index))
 
             # already found values in turn 2
             else:
@@ -519,20 +540,26 @@ class CompetitorInstance():
                 if self.whoMadeBid_log[-1] not in self.allies or self.engine.random.randint(0, 100) > 66:
                     self.make_random_bid(lastBid, 0, 50)
                 pass
-
         # post turn 3
-        else:
-            pr = 12 * self.turn
-            if lastBid < self.actual_trueValue - 2000:
-                # prevent outbidding from self
-                if self.whoMadeBid_log[-1] not in self.allies or self.engine.random.randint(0, 100) > 66:
-                    if self.engine.random.randint(0, 100) > pr:
-                        self.make_instakill_bid(lastBid)
-                    else:
-                        self.make_small_bid(lastBid)
-            elif self.actual_trueValue - 2000 < lastBid < self.actual_trueValue:
-                self.make_instakill_bid(lastBid)
+        elif self.turn == 4:
+            # re-calibrate ally list in case of failure (there may be more than 2) - this should be consistent across
+            # all 3 bots - then we use turn 4 to remove the final bot.
+            if len(self.allies) > 2:
+                self.allies = self.refine_ally_list(3)
 
+                non_ally = [key for key in self.ally_trueValue.keys() if key not in self.allies]
+                for competitor in non_ally:
+                    self.ally_trueValue.pop(competitor, None)
+
+                # allies must be found by 4th turn...
+                self.actual_trueValue, self.known_ally = self.detect_ally_trueVal(own_index=self.index,
+                                                                                  own_trueVal=self.mybot_trueValue,
+                                                                                  phase=self.phase)
+
+            self.post_turn3_bid(lastBid)
+        # post turn 4
+        else:
+            self.post_turn3_bid(lastBid)
         self.turn += 1
         pass
 
@@ -544,28 +571,26 @@ class CompetitorInstance():
         if self.phase == "phase_1" and self.round == 0:
             ls = self.full_log[competitor]
             if len(ls) >= 6 and all(val != "skip" for val in ls[:6]) and len(set(ls[:3])) == 1:
-                    return True
+                return True
         return False
 
-
-    def kenl_phase1_known(self,ls):
+    def kenl_phase1_known(self, ls):
         if self.phase == "phase_1":
-            if len(ls) == 3 and "skip" not in ls[0:2] and\
-                    all(val < 25 for val in ls[0:2]) and\
+            if len(ls) == 3 and "skip" not in ls[0:3] and \
+                    all(val < 25 for val in ls[0:2]) and \
                     self.actual_trueValue - 8 <= ls[2] <= self.actual_trueValue:
                 return True
 
     def repeated_bidding_pattern(self, dc):
         if self.phase == "phase_1":
-            for i in range(len(dc.keys())-1):
-                if len(dc[i]) < 3 or len(dc[i+1]) < 3:
+            for i in range(len(dc.keys()) - 1):
+                if len(dc[i]) < 3 or len(dc[i + 1]) < 3:
                     return False
-                if dc[i][:2].count("skip") == 0 and dc[i][:2] == dc[i+1][:2]:
+                if dc[i][:2].count("skip") == 0 and dc[i][:2] == dc[i + 1][:2]:
                     return True
-                if dc[i][:3].count("skip") <= 1 and dc[i][:3] == dc[i+1][:3]:
+                if dc[i][:3].count("skip") <= 1 and dc[i][:3] == dc[i + 1][:3]:
                     return True
         return False
-
 
     def repeated_nonbidder(self, dc):
         if self.phase == "phase_1":
@@ -617,13 +642,8 @@ class CompetitorInstance():
                 if "skip" not in ls[0:5] and ls[3] > 24 and ls[4] == 28:
                     return True
         elif self.phase == "phase_2":
-            if len(ls) >= 6:
-                if "skip" in ls[0:4]:
-                    return False
-                if ls[3] < 100:
-                    return False
-                if set(ls[4:-1]) != {8}:
-                    return True
+            if len(ls) >= 6 and "skip" not in ls[0:6] and ls[3] > 100 and set(ls[4:6]) == {8}:
+                return True
         return False
 
     def pk_known(self, ls):
@@ -741,8 +761,6 @@ class CompetitorInstance():
         for k in range(self.numplayers):
             self.super_log[k][self.round] = self.full_log[k][:min(5, len(self.full_log[k]))]
 
-
-
         if hasattr(self, "allies"):
             self.total_allies = self.allies
             self.total_allies.append(self.index)
@@ -813,7 +831,7 @@ class CompetitorInstance():
             self.reportOppTeam.extend(same_large_1st_bid)
         same_bid_pattern = list(set(same_bid_pattern))
 
-        if len(same_bid_pattern) ==3:
+        if len(same_bid_pattern) == 3:
             for bot in same_bid_pattern:
                 if self.VRao_known(bot):
                     reportKnownBots.append(bot)
@@ -882,7 +900,6 @@ class CompetitorInstance():
             self.reportOppTeam.extend(opp_list)
 
         self.reportOppTeam = list(set(self.reportOppTeam))
-
 
         if VRao_known:
             self.engine.print("VRao_known detected: " + str(VRao_known))
