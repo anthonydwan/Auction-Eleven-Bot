@@ -1,9 +1,12 @@
 """
 to be done
+        phase_1 = self.allies should be saved
         instakill
             phase 1 - should leave some room for more points (but enough for a round) - why again?
             phase 2 - fake_known getting detected (think whether it is a good strat when everyone can bid that price) -
             see how people are winning phase 2 for reference
+
+
 
     phase1
         roshvenk
@@ -198,7 +201,7 @@ class CompetitorInstance():
                 prob = 0.01741
 
             # P(NPC | bid) = P(bid | NPC) * P(NPC) / [P(bid | NPC) * P(NPC) + P(bid | N - NPC) * P(N - NPC)]
-            NNPC_bid_dist = 1-prob
+            NNPC_bid_dist = 1 - prob
             self.NPC_bid_amount_dist[whoMadeBid] = (prob * bid_dist_prior) / (
                     prob * bid_dist_prior + NNPC_bid_dist * (1 - bid_dist_prior))
             return self.NPC_bid_amount_dist[whoMadeBid]
@@ -284,8 +287,30 @@ class CompetitorInstance():
         output = (17 * player_index ** 2 + 19 + 13 * self.round ** 2) % 23 + 5
         return output
 
+    def decode_turn0_msg(self):
+        if self.phase == "phase_1" and self.round > 0:
+            ally_msg1 = {ally: self.full_log[ally][0] - 8 - self.bid_buffer + self.private_key - self.modifier(ally) for
+                         ally in self.allies}
+        else:
+            ally_msg1 = {
+                ally: self.full_log[ally][0] - 8 - self.bid_buffer + self.private_key - self.modifier(ally) for
+                ally in self.full_log.keys() if
+                # ally is not itself
+                ally != self.index and
+                # there must have been already bid
+                self.full_log[ally] and
+                # there must not have skipped
+                self.full_log[ally][0] != "skip" and
+                # range value digits must be within 0/2sd range
+                0 <= (self.full_log[ally][0] - 8 - self.bid_buffer + self.private_key - self.modifier(ally))
+                <= self.engine.math.floor((2 * self.sd_val) / 100)}
+        return ally_msg1
+
+    def decode_turn1_msg(self):
+        pass
+
     def detect_ally_trueVal(self, own_index, own_trueVal, phase):
-        # identifying allys and true bots:
+        """identifying allies and true bots:"""
         self.ally_trueValue[own_index] = own_trueVal + self.mean_val - self.sd_val
         Counter = {trueVals: sum(value == trueVals for value in self.ally_trueValue.values()) for trueVals in
                    self.ally_trueValue.values()}
@@ -389,7 +414,9 @@ class CompetitorInstance():
                     self.engine.makeBid(maxbid)
                 # case 2: know trueVal ally, at most bid for trueVal - 50
                 elif self.known_ally != self.index:  # normal bid
-                    maxbid = max(self.actual_trueValue - self.engine.random.randint(50, 100) - self.engine.random.randint(4, 7), lastBid + 8)
+                    maxbid = max(
+                        self.actual_trueValue - self.engine.random.randint(50, 100) - self.engine.random.randint(4, 7),
+                        lastBid + 8)
                     self.engine.makeBid(maxbid)
         else:
             pass
@@ -398,7 +425,7 @@ class CompetitorInstance():
         pr = 12 * self.turn
         if lastBid < self.actual_trueValue - 2000:
             # prevent outbidding from self
-            if self.whoMadeBid_log[-1] not in self.allies or self.engine.random.randint(0, 100) > 88:
+            if self.whoMadeBid_log[-1] not in self.allies or self.engine.random.randint(0, 100) > 90:
                 if self.engine.random.randint(0, 100) > pr:
                     self.make_instakill_bid(lastBid)
                 else:
@@ -412,6 +439,7 @@ class CompetitorInstance():
     def onMyTurn(self, lastBid):
         # print(f"BOT {self.index}")
         # print(f"this is turn {self.turn}")
+        # print(self.full_log)
         # lastBid is the last bid that was made
         if self.turn == 0:
             if self.mybot_trueValue == -1:
@@ -426,18 +454,7 @@ class CompetitorInstance():
 
             # finding all the allies that has the same output accounting for the distractions
             # analysing msg1 from round 0:
-            self.ally_msg1 = {
-                ally: self.full_log[ally][0] - 8 - self.bid_buffer + self.private_key - self.modifier(ally) for
-                ally in self.full_log.keys() if
-                # ally is not itself
-                ally != self.index and
-                # there must have been already bid
-                self.full_log[ally] and
-                # there must not have skipped
-                self.full_log[ally][0] != "skip" and
-                # range value digits must be within 0/2sd range
-                0 <= (self.full_log[ally][0] - 8 - self.bid_buffer + self.private_key - self.modifier(ally))
-                <= self.engine.math.floor((2 * self.sd_val) / 100)}
+            self.ally_msg1 = self.decode_turn0_msg()
 
             trueValue_part2_msg = int(str(self.mybot_trueValue)[-2:])
             self.engine.makeBid(
@@ -445,7 +462,10 @@ class CompetitorInstance():
             )
 
             # find team's allies
-            self.allies = [ally for ally in self.ally_msg1.keys()]
+            if self.phase == "phase_1" and self.round > 0:
+                pass
+            else:
+                self.allies = [ally for ally in self.ally_msg1.keys()]
 
 
         elif self.turn == 2:
@@ -666,7 +686,8 @@ class CompetitorInstance():
         return False
 
     def sly_bid_known(self, competitor):
-        return self.last_bid_log[competitor] == self.actual_trueValue - 7
+        if hasattr(self, "actual_trueValue"):
+            return self.last_bid_log[competitor] == self.actual_trueValue - 7
 
     def large_skippers(self, ls):
         # if first 10 turns all skip
@@ -766,7 +787,7 @@ class CompetitorInstance():
             self.super_log[k][self.round] = self.full_log[k][:min(5, len(self.full_log[k]))]
 
         if hasattr(self, "allies"):
-            self.total_allies = self.allies
+            self.total_allies = self.allies.copy()
             self.total_allies.append(self.index)
 
         reportOwnTeam = []
@@ -779,6 +800,7 @@ class CompetitorInstance():
 
         competitors = [i for i in range(self.numplayers) if i not in reportOwnTeam]
 
+        sly_bid_known = []
         kenl_phase1_known = []
         neverbid = []
         # deadbeef_known = []
@@ -884,6 +906,12 @@ class CompetitorInstance():
                 elif self.last10_smallset(self.full_log[competitor]):
                     smallset.append(competitor)
 
+                elif self.sly_bid_known(competitor):
+                    sly_bid_known.append(competitor)
+                    if self.phase == "phase_2":
+                        reportKnownBots.append(competitor)
+
+
                 # elif self.NPC_bid_amount_dist[competitor] < 0.001:
                 #     low_NPC_bid_amount_dist.append(competitor)
 
@@ -897,22 +925,23 @@ class CompetitorInstance():
                          christie_known, pk_known, large_skippers,
                          const_diff, large_jumps, kenl_phase1_known,
                          sora_phase2, repeated_nonbidder, repeated_bidding_pattern,
-                         smallset, christie_phase1_unknown]:
+                         smallset, christie_phase1_unknown, sly_bid_known]:
             self.reportOppTeam.extend(opp_list)
 
         self.reportOppTeam = list(set(self.reportOppTeam))
         #####################################################################################
         # finally do a low bid/skip prob:
 
-        sorted_skip_prob = sorted([competitor for competitor in competitors if competitor not in self.reportOppTeam], key = lambda k: self.NPC_skip_prob[k])
-        for competitor in sorted_skip_prob:
-            if self.NPC_skip_prob[competitor] < 0.005:
-                low_NPC_skip_prob.append(competitor)
-                sorted_skip_prob.remove(competitor)
+        sorted_skip_prob = sorted([competitor for competitor in competitors if competitor not in self.reportOppTeam],
+                                  key=lambda k: self.NPC_skip_prob[k])
+
+        while len(self.reportOppTeam) < 6 and self.NPC_skip_prob[sorted_skip_prob[0]] < 0.005:
+            low_NPC_skip_prob.append(sorted_skip_prob[0])
+            sorted_skip_prob.pop(0)
 
         if self.phase == "phase_2":
             while len(self.reportOppTeam) < 6 and self.NPC_skip_prob[sorted_skip_prob[0]] < 0.0075:
-                low_NPC_skip_prob.append(sorted_skip_prob)
+                low_NPC_skip_prob.append(sorted_skip_prob[0])
                 sorted_skip_prob.pop(0)
 
         self.reportOppTeam.extend(low_NPC_skip_prob)
@@ -958,6 +987,8 @@ class CompetitorInstance():
             self.engine.print("repeated_bidding_pattern detected: " + str(repeated_bidding_pattern))
         if christie_phase1_unknown:
             self.engine.print("christie_phase1_unknown detected: " + str(christie_phase1_unknown))
+        if sly_bid_known:
+            self.engine.print(f"sly_bid_known detected: {sly_bid_known}")
 
         #########################################################################
         # exclusion list for sly_report
