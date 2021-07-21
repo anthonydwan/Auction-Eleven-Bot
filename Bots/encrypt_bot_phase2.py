@@ -733,8 +733,10 @@ class CompetitorInstance():
                 if value > self.gameParameters["minimumBid"] * (1 + 2):
                     return True
         elif self.phase == "phase_2":
-            for value in ls:
-                if value > 140:
+            if any(value > 240 for value in ls):
+                return True
+            if len(ls) >=4:
+                if any(value > 145 for value in ls[:4]) or len([value for value in ls[:4] if value > 120]) > 1:
                     return True
         return False
 
@@ -1002,7 +1004,8 @@ class CompetitorInstance():
             exclusion_list.extend(same_large_1st_bid)
         if len(same_bid_pattern) == 2 or len(same_bid_pattern) == 4:
             exclusion_list.extend(same_bid_pattern)
-        exclusion_list.extend(christie_phase2_same)
+        if len(set(christie_phase2_same)) ==2:
+            exclusion_list.extend(christie_phase2_same)
         exclusion_list.extend(christie_phase1_unknown)
         if repeated_nonbidder:
             exclusion_list.extend(repeated_nonbidder)
