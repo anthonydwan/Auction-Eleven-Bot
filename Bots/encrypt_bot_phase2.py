@@ -1,7 +1,7 @@
 """
 to be done
         very unlucky games - need round 4 to confirm
-        add first 2 values same
+        add kenl phase 1 dumb strat
 
 
     phase1
@@ -536,6 +536,13 @@ class CompetitorInstance():
     # enemy detection algorithms
     ####################################################################################
 
+    def kenl_phase1_known(self,ls):
+        if self.phase == "phase_1":
+            if len(ls) ==3 and\
+                    all(val < 25 for val in ls[0:2]) and\
+                    self.actual_trueValue - 8 <= ls[2] <= self.actual_trueValue:
+                return True
+
     def repeated_bidding_pattern(self, dc):
         if self.phase == "phase_1":
             for i in range(len(dc.keys())-1):
@@ -586,13 +593,6 @@ class CompetitorInstance():
         if len(ls) >= 4 and self.phase == "phase_1":
             if len(set(ls[:3])) == 1 and set(ls[:4]) != {"skip"}:
                 if ls[3] != "skip" and ls[3] > 100:
-                    return True
-        return False
-
-    def kenl_phase1_unknown(self, ls):
-        if self.phase == "phase_1" and len(ls) >= 2:
-            if "skip" not in ls[:2]:
-                if ls[:2] == [16, 11] or ls[:2] == [21, 17]:
                     return True
         return False
 
@@ -755,6 +755,7 @@ class CompetitorInstance():
 
         competitors = [i for i in range(self.numplayers) if i not in reportOwnTeam]
 
+        kenl_phase1_known = []
         neverbid = []
         # deadbeef_known = []
         one_unknown = []
@@ -769,7 +770,6 @@ class CompetitorInstance():
         same_bid_pattern = []
         same_large_1st_bid = []
         christie_same = []
-        kenl_phase1_unknown = []
         sora_phase2 = []
         repeated_nonbidder = []
         repeated_bidding_pattern = []
@@ -794,7 +794,7 @@ class CompetitorInstance():
                         christie_same.append(competitors[j])
                 if len(self.full_log[competitors[i]]) >= 3 and len(self.full_log[competitors[j]]) >= 3:
                     if self.full_log[competitors[i]][:3] == self.full_log[competitors[j]][:3] and \
-                            self.full_log[competitors[i]][:3].count("skip") <= 1:  # at most one skip
+                            self.full_log[competitors[i]][:3].count("skip") < 1:  # at most one skip
                         same_bid_pattern.append(competitors[i])
                         same_bid_pattern.append(competitors[j])
                 if self.full_log[competitors[i]][0] == self.full_log[competitors[j]][0] and \
@@ -819,8 +819,9 @@ class CompetitorInstance():
                 if self.neverbid(self.full_log[competitor]):
                     neverbid.append(competitor)
 
-                elif self.kenl_phase1_unknown(self.full_log[competitor]):
-                    kenl_phase1_unknown.append(competitor)
+                elif self.kenl_phase1_known(self.full_log[competitor]):
+                    kenl_phase1_known.append(competitor)
+                    reportKnownBots.append(competitor)
 
                 elif self.one_unknown(self.full_log[competitor]):
                     one_unknown.append(competitor)
@@ -867,12 +868,13 @@ class CompetitorInstance():
 
         for opp_list in [neverbid, V_Rao_known, one_unknown,
                          christie_known, pk_known, large_skippers,
-                         const_diff, large_jumps, kenl_phase1_unknown,
+                         const_diff, large_jumps, kenl_phase1_known,
                          sora_phase2, repeated_nonbidder, repeated_bidding_pattern,
                          smallset, low_NPC_skip_prob, low_NPC_bid_amount_dist]:
             self.reportOppTeam.extend(opp_list)
 
         self.reportOppTeam = list(set(self.reportOppTeam))
+
 
         if V_Rao_known:
             self.engine.print("V_Rao_known detected: " + str(V_Rao_known))
@@ -882,6 +884,8 @@ class CompetitorInstance():
             self.engine.print("neverbidder detected: " + str(neverbid))
         if christie_known:
             self.engine.print("christie_known detected: " + str(christie_known))
+        if kenl_phase1_known:
+            self.engine.print("kenl_phase1_known detected: " + str(kenl_phase1_known))
         if pk_known:
             self.engine.print("pk_known detected: " + str(pk_known))
         if large_skippers:
@@ -894,8 +898,6 @@ class CompetitorInstance():
             self.engine.print("sora_phase2 detected: " + str(sora_phase2))
         if smallset:
             self.engine.print("last10_smallset detected: " + str(smallset))
-        if kenl_phase1_unknown:
-            self.engine.print("kenl_phase1_unknown detected: " + str(kenl_phase1_unknown))
         if christie_same:
             self.engine.print("christie_same detected: " + str(christie_same))
         if same_large_1st_bid:
@@ -921,8 +923,6 @@ class CompetitorInstance():
         if len(same_bid_pattern) == 2 or len(same_bid_pattern) == 4:
             exclusion_list.extend(same_bid_pattern)
         exclusion_list.extend(christie_same)
-        if kenl_phase1_unknown:
-            exclusion_list.extend(kenl_phase1_unknown)
         if repeated_nonbidder:
             exclusion_list.extend(repeated_nonbidder)
         exclusion_list = list(set(exclusion_list))
