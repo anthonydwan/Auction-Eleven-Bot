@@ -23,7 +23,7 @@ to be done
         check thewrongjames
 
     phase2
-
+        soil
         TheLarpers
         confirm christie bot OK??????????????????????????
         x-axis IMPORTANT!!!!!!!!!!!!!!!
@@ -45,7 +45,7 @@ to be done
         note - Kaito (new) 14 July - >200, >200, <20, >200 (need to check for more confirmation for the range of values)
         20/07 12:00PM: Sora only bids after 3/4 skips (should not be a problem for later on)
         20/07 2:30PM: Christie - unknown bots bid 4 times, the second 2 times are the same, does not have to be large
-        Christine -
+
 
 
 """
@@ -196,7 +196,7 @@ class CompetitorInstance():
                 prob = 0.01741
 
             # P(NPC | bid) = P(bid | NPC) * P(NPC) / [P(bid | NPC) * P(NPC) + P(bid | N - NPC) * P(N - NPC)]
-            NNPC_bid_dist = 0.9
+            NNPC_bid_dist = 1-prob
             self.NPC_bid_amount_dist[whoMadeBid] = (prob * bid_dist_prior) / (
                     prob * bid_dist_prior + NNPC_bid_dist * (1 - bid_dist_prior))
             return self.NPC_bid_amount_dist[whoMadeBid]
