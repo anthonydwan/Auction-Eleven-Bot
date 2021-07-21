@@ -402,7 +402,8 @@ class CompetitorInstance():
             if self.phase == "phase_1":
                 # case 1: not known_ally and go for the kill
                 if self.known_ally != self.index:
-                    maxbid = max(self.actual_trueValue - 7, lastBid + 8)
+                    maxbid = max(self.actual_trueValue - 7 - self.engine.random.randint(0, 500), lastBid + 8)
+                    maxbid = self.close_to_trueValue(lastBid, maxbid)
                     self.engine.makeBid(maxbid)
                 # case 2: known_ally, at most bid for trueVal - 50
                 elif self.known_ally == self.index:
@@ -429,13 +430,16 @@ class CompetitorInstance():
         pr = 12 * self.turn
         if lastBid < self.actual_trueValue - 2000:
             # prevent outbidding from self
-            if self.whoMadeBid_log[-1] not in self.allies or self.engine.random.randint(0, 100) > 90:
+            if self.whoMadeBid_log[-1] not in self.allies:
                 if self.engine.random.randint(0, 100) > pr:
                     self.make_instakill_bid(lastBid)
                 else:
                     self.make_small_bid(lastBid)
+            else:
+                pass
         elif self.actual_trueValue - 2000 < lastBid < self.actual_trueValue:
-            self.make_instakill_bid(lastBid)
+            if self.whoMadeBid_log[-1] not in self.allies:
+                self.make_instakill_bid(lastBid)
         pass
 
     ########################################################################################################
