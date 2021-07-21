@@ -410,7 +410,7 @@ class CompetitorInstance():
                 # case 1: fake_val ally go for the kill
                 if self.known_ally == self.index:
                     # add randomness to hide from other bots
-                    maxbid = max(self.actual_trueValue - self.engine.random.randint(4, 7), lastBid + 8)
+                    maxbid = max(self.actual_trueValue - self.engine.random.randint(4, 57), lastBid + 8)
                     self.engine.makeBid(maxbid)
                 # case 2: know trueVal ally, at most bid for trueVal - 50
                 elif self.known_ally != self.index:  # normal bid
@@ -1003,6 +1003,8 @@ class CompetitorInstance():
         exclusion_list.extend(christie_phase1_unknown)
         if repeated_nonbidder:
             exclusion_list.extend(repeated_nonbidder)
+        if self.phase == "phase_1" and sly_bid_known:
+            exclusion_list.extend(sly_bid_known)
         exclusion_list = list(set(exclusion_list))
         if exclusion_list:
             self.engine.print(f"exclusion_list: {exclusion_list}")
