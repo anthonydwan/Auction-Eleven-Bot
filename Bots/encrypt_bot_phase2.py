@@ -921,16 +921,17 @@ class CompetitorInstance():
             elif self.last10_consistent_diff(self.full_log[competitor]):
                 const_diff.append(competitor)
 
+            elif self.sly_bid_known(competitor):
+                sly_bid_known.append(competitor)
+                if self.phase == "phase_2":
+                    reportKnownBots.append(competitor)
+
             elif self.largeJumps(self.full_log[competitor]):
                 large_jumps.append(competitor)
 
             elif self.last10_smallset(self.full_log[competitor]):
                 smallset.append(competitor)
 
-            elif self.sly_bid_known(competitor):
-                sly_bid_known.append(competitor)
-                if self.phase == "phase_2":
-                    reportKnownBots.append(competitor)
 
             # elif self.NPC_bid_amount_dist[competitor] < 0.001:
             #     low_NPC_bid_amount_dist.append(competitor)
