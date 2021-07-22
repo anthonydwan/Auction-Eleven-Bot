@@ -1,11 +1,11 @@
 """
 to be done
-        phase_1 = self.allies should be saved
         instakill
             phase 1 - should leave some room for more points (but enough for a round)
             consider whether hiding is a better strategy for phase_1 since you will get compounded detection.
             phase 2 - fake_known getting detected (think whether it is a good strat when everyone can bid that price) -
             see how people are winning phase 2 for reference
+        neverbidders in phase_2 detection
 
 
 
@@ -208,6 +208,26 @@ class CompetitorInstance():
             return self.NPC_bid_amount_dist[whoMadeBid]
         return 1
 
+
+    def find_bayes_bid_skip_prob(self):
+        """probability reference for NPC_bid_skip"""
+        # this should be the previous bid in the self.howMuch_log, the current lastBid is updated later
+        if self.howMuch_log[-1] < self.mean_val / 4:
+            pr = 0.64
+            NNPC_bid = 0.95
+        elif self.mean_val / 4 < self.howMuch_log[-1] < 3 / 4 * self.mean_val :
+            pr = 0.16
+            NNPC_bid = 0.75
+        elif 3 / 4 * self.mean_val < self.howMuch_log[-1]:
+            pr = 0.04
+            if hasattr(self, "actual_trueValue") and self.howMuch_log[-1] >= self.actual_trueValue - 7:
+                # if previous bid is already at trueVal -7, it is unlikely that a high elo player would keep bidding (?)
+                NNPC_bid = 0.25
+            else:
+                NNPC_bid = 0.95
+        return pr, NNPC_bid
+
+
     def NPC_bayes_bid_skip_probability(self, player, bidded):
         """
         # Bayesian Probability of NPC skipping
@@ -217,17 +237,7 @@ class CompetitorInstance():
         :return: float: probability of NPC skipping/bidding
         """
         prior = self.NPC_skip_prob[player]
-
-        # this should be the previous bid in the self.howMuch_log, the current lastBid is updated later
-        if self.howMuch_log[-1] < self.mean_val / 4:
-            pr = 0.64
-            NNPC_bid = 0.95
-        elif 3 / 4 * self.mean_val > self.howMuch_log[-1] > self.mean_val / 4:
-            pr = 0.16
-            NNPC_bid = 0.8
-        elif self.howMuch_log[-1] > 3 / 4:
-            pr = 0.04
-            NNPC_bid = 0.95
+        pr, NNPC_bid = self.find_bayes_bid_skip_prob()
         if not bidded:
             # P(NPC|not bid) = P(not bid|NPC)*P(NPC) / [P(not bid|NPC)*P(NPC) + P(not-bid|N-NPC)*P(N-NPC)]
             self.NPC_skip_prob[player] = (1 - pr) * prior / ((1 - pr) * prior + (1 - NNPC_bid) * (1 - prior))
@@ -553,7 +563,7 @@ class CompetitorInstance():
                     #####################################################
                     # normal mode (before end of competition)
                     # preventing outbidding from self
-                    if self.whoMadeBid_log[-1] not in self.allies or self.engine.random.randint(0, 100) > 66:
+                    if self.whoMadeBid_log[-1] not in self.allies or self.engine.random.randint(0, 100) > 50:
                         self.make_random_bid(lastBid, 0, 80)
 
                     #####################################################
@@ -700,15 +710,22 @@ class CompetitorInstance():
 
     def sly_bid_known(self, competitor):
         if hasattr(self, "actual_trueValue"):
-            if len(self.last_bid_log[competitor]) > 0 and self.actual_trueValue - 7 <= self.last_bid_log[competitor][
-                -1] <= self.actual_trueValue:
+            if len(self.last_bid_log[competitor]) > 0 and \
+                    self.actual_trueValue - 7 <= self.last_bid_log[competitor][-1] <= self.actual_trueValue:
                 return True
         return False
 
+    def sly_bid_unknown(self, competitor):
+        if hasattr(self, "actual_trueValue"):
+            if len(self.last_bid_log[competitor]) > 0 and \
+                    self.actual_trueValue - 57 <= self.last_bid_log[competitor][-1] <= self.actual_trueValue - 50:
+                return True
+        return False
+
+
     def large_skippers(self, ls):
         # if first 10 turns all skip
-        if len(ls) >= 10:
-            return set(ls[:10]) == {"skip"}
+        return len(ls) >= 10 and set(ls[:10]) == {"skip"}
 
     def matchset(self, ls, set_val_param):
         ls = [val for val in ls if val != "skip"]
@@ -814,7 +831,16 @@ class CompetitorInstance():
             if len(self.full_log[competitors[i]]) >= 3 and len(self.full_log[competitors[j]]) >= 3:
                 # christie_known in phase_2 (same values) - bid 3 times
                 if self.full_log[competitors[i]][1:3] == self.full_log[competitors[j]][1:3] and \
-                        "skip" not in self.full_log[competitors[i]][:3]:
+                        "skip" not in self.full_log[competitors[i]][:3] and \
+                        self.full_log[competitors[i]][0] != self.full_log[competitors[j]][0]:
+                    # if bid 3 times,
+                    # the last two are the same in phase_2:
+                    christie_phase2_same.append(competitors[i])
+                    christie_phase2_same.append(competitors[j])
+                    return
+                elif self.full_log[competitors[i]][0:2] == self.full_log[competitors[j]][0:2] and \
+                        "skip" not in self.full_log[competitors[i]][:3] and \
+                        self.full_log[competitors[i]][2] != self.full_log[competitors[j]][2]:
                     # if bid 3 times,
                     # the last two are the same in phase_2:
                     christie_phase2_same.append(competitors[i])
@@ -845,6 +871,7 @@ class CompetitorInstance():
         competitors = [i for i in range(self.numplayers) if i not in reportOwnTeam]
 
         sly_bid_known = []
+        sly_bid_unknown = []
         kenl_phase1_known = []
         neverbid = []
         # deadbeef_known = []
@@ -942,6 +969,11 @@ class CompetitorInstance():
                 if self.phase == "phase_2":
                     reportKnownBots.append(competitor)
 
+            elif self.sly_bid_unknown(competitor):
+                sly_bid_unknown.append(competitor)
+                if self.phase == "phase_1":
+                    reportKnownBots.append(competitor)
+
             elif self.largeJumps(self.full_log[competitor]):
                 large_jumps.append(competitor)
 
@@ -972,12 +1004,12 @@ class CompetitorInstance():
         sorted_skip_prob = sorted([competitor for competitor in competitors if competitor not in self.reportOppTeam],
                                   key=lambda k: self.NPC_skip_prob[k])
 
-        while len(self.reportOppTeam) < 6 and self.NPC_skip_prob[sorted_skip_prob[0]] < 0.005:
+        while len(self.reportOppTeam) < 6 and self.NPC_skip_prob[sorted_skip_prob[0]] < 0.0075:
             low_NPC_skip_prob.append(sorted_skip_prob[0])
             sorted_skip_prob.pop(0)
 
         if self.phase == "phase_2":
-            while len(self.reportOppTeam) < 6 and self.NPC_skip_prob[sorted_skip_prob[0]] < 0.0075:
+            while len(self.reportOppTeam) < 6 and self.NPC_skip_prob[sorted_skip_prob[0]] < 0.001:
                 low_NPC_skip_prob.append(sorted_skip_prob[0])
                 sorted_skip_prob.pop(0)
 
@@ -985,47 +1017,49 @@ class CompetitorInstance():
         self.reportOppTeam = list(set(self.reportOppTeam))
 
         ###################################################################################
-
-        if VRao_known:
-            self.engine.print("VRao_known detected: " + str(VRao_known))
-        if one_unknown:
-            self.engine.print("one_unknown detected: " + str(one_unknown))
-        if neverbid:
-            self.engine.print("neverbidder detected: " + str(neverbid))
-        if christie_known:
-            self.engine.print("christie_known detected: " + str(christie_known))
-        if kenl_phase1_known:
-            self.engine.print("kenl_phase1_known detected: " + str(kenl_phase1_known))
-        # if pk_known:
-        #     self.engine.print("pk_known detected: " + str(pk_known))
-        if large_skippers:
-            self.engine.print("first10_roundSkipper detected: " + str(large_skippers))
-        if const_diff:
-            self.engine.print("last10_const_diff detected: " + str(const_diff))
-        if large_jumps:
-            self.engine.print("largejump detected: " + str(large_jumps))
-        if sora_phase2:
-            self.engine.print("sora_phase2 detected: " + str(sora_phase2))
-        if smallset:
-            self.engine.print("last10_smallset detected: " + str(smallset))
-        if christie_phase2_same:
-            self.engine.print("christie_phase2_same detected: " + str(christie_phase2_same))
-        if same_large_1st_bid:
-            self.engine.print(f"same first big bid pattern bots detected: {same_large_1st_bid}")
-        if same_1st_3_bids:
-            self.engine.print(f"same first 3 bid pattern bots detected: {same_1st_3_bids}")
-        if low_NPC_skip_prob:
-            self.engine.print("non-NPC bid/skip detected: " + str(low_NPC_skip_prob))
-        if low_NPC_bid_amount_dist:
-            self.engine.print("non-NPC bid amount distrib detected: " + str(low_NPC_bid_amount_dist))
-        if repeated_nonbidder:
-            self.engine.print("repeated_nonbidder detected: " + str(repeated_nonbidder))
-        if repeated_bidding_pattern:
-            self.engine.print("repeated_bidding_pattern detected: " + str(repeated_bidding_pattern))
-        if christie_phase1_unknown:
-            self.engine.print("christie_phase1_unknown detected: " + str(christie_phase1_unknown))
-        if sly_bid_known:
-            self.engine.print(f"sly_bid_known detected: {sly_bid_known}")
+        if self.index == sorted(self.total_allies)[0]:
+            if VRao_known:
+                self.engine.print("VRao_known detected: " + str(VRao_known))
+            if one_unknown:
+                self.engine.print("one_unknown detected: " + str(one_unknown))
+            if neverbid:
+                self.engine.print("neverbidder detected: " + str(neverbid))
+            if christie_known:
+                self.engine.print("christie_known detected: " + str(christie_known))
+            if kenl_phase1_known:
+                self.engine.print("kenl_phase1_known detected: " + str(kenl_phase1_known))
+            # if pk_known:
+            #     self.engine.print("pk_known detected: " + str(pk_known))
+            if large_skippers:
+                self.engine.print("first10_roundSkipper detected: " + str(large_skippers))
+            if const_diff:
+                self.engine.print("last10_const_diff detected: " + str(const_diff))
+            if large_jumps:
+                self.engine.print("largejump detected: " + str(large_jumps))
+            if sora_phase2:
+                self.engine.print("sora_phase2 detected: " + str(sora_phase2))
+            if smallset:
+                self.engine.print("last10_smallset detected: " + str(smallset))
+            if christie_phase2_same:
+                self.engine.print("christie_phase2_same detected: " + str(christie_phase2_same))
+            if same_large_1st_bid:
+                self.engine.print(f"same first big bid pattern bots detected: {same_large_1st_bid}")
+            if same_1st_3_bids:
+                self.engine.print(f"same first 3 bid pattern bots detected: {same_1st_3_bids}")
+            if low_NPC_skip_prob:
+                self.engine.print("non-NPC bid/skip detected: " + str(low_NPC_skip_prob))
+            if low_NPC_bid_amount_dist:
+                self.engine.print("non-NPC bid amount distrib detected: " + str(low_NPC_bid_amount_dist))
+            if repeated_nonbidder:
+                self.engine.print("repeated_nonbidder detected: " + str(repeated_nonbidder))
+            if repeated_bidding_pattern:
+                self.engine.print("repeated_bidding_pattern detected: " + str(repeated_bidding_pattern))
+            if christie_phase1_unknown:
+                self.engine.print("christie_phase1_unknown detected: " + str(christie_phase1_unknown))
+            if sly_bid_known:
+                self.engine.print(f"sly_bid_known detected: {sly_bid_known}")
+            if sly_bid_unknown:
+                self.engine.print(f"sly_bid_known detected: {sly_bid_unknown}")
 
         #########################################################################
         # exclusion list for sly_report
@@ -1036,7 +1070,7 @@ class CompetitorInstance():
             exclusion_list.extend(same_large_1st_bid)
         if len(same_1st_3_bids) in [2, 4]:
             exclusion_list.extend(same_1st_3_bids)
-        if len(set(christie_phase2_same)) == 2:
+        if len(set(christie_phase2_same)) in [2, 4]:
             exclusion_list.extend(christie_phase2_same)
         if len(set(neverbid)) == 2:
             exclusion_list.extend(neverbid)
@@ -1045,6 +1079,11 @@ class CompetitorInstance():
             exclusion_list.extend(repeated_nonbidder)
         if self.phase == "phase_1" and sly_bid_known:
             exclusion_list.extend(sly_bid_known)
+
+        if self.phase == "phase_2" and sly_bid_unknown:
+            exclusion_list.extend(list(set(sly_bid_unknown)))
+
+        # remove duplicates
         exclusion_list = list(set(exclusion_list))
         if exclusion_list:
             self.engine.print(f"exclusion_list: {exclusion_list}")
@@ -1067,12 +1106,14 @@ class CompetitorInstance():
             del self.known_ally
         del self.bid_index
 
-        for key in self.full_log.keys():
-            self.engine.print(str(key) + "'s NPC prob: " + str(self.NPC_skip_prob[key]))
 
-        if self.phase == "phase_2":
+        if self.index == sorted(self.total_allies)[0]:
             for key in self.full_log.keys():
-                self.engine.print(str(key) + "'s NPC bid_dist: " + str(self.NPC_bid_amount_dist[key]))
+                self.engine.print(str(key) + "'s NPC prob: " + str(self.NPC_skip_prob[key]))
+
+            if self.phase == "phase_2":
+                for key in self.full_log.keys():
+                    self.engine.print(str(key) + "'s NPC bid_dist: " + str(self.NPC_bid_amount_dist[key]))
 
         self.round += 1
 
