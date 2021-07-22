@@ -32,7 +32,7 @@ to be done
         TheLarpers
         x-axis IMPORTANT!!!!!!!!!!!!!!!
         thewrongjames
-        check kenl -
+        check kenl !!!!! quick relay - works on relytz
         christie
         roshvenk
 
@@ -40,9 +40,14 @@ to be done
     FOUND PATTERNS
     phase 1
         21/07 2:30PM: kenl known will bid 2 times and then just outbid, kenl_unknown only bid twice, the first two turns are random-ish number within 24
+
         21/07 2:30PM: One - have to bid 6 times, will not be a problem
-        21/07 3PM: Christie (unknown) - random,random,skip,skip, 28
-        21/07 3PM: Christie (known) - random,random,number,big_num, 28
+
+        Christie
+        # 21/07 3PM: (unknown) - random,random,skip,skip, 28
+        # 21/07 3PM: (known) - random,random,number,big_num, 28
+        22/07 11PM: - hiding random
+
         21/07 3PM: VRao - in auction 0, bids same number 3 times for all teambots, then for known bot will make 3 more bids to relay trueVal,
         after first auction it'll stop doing that
 
@@ -50,7 +55,7 @@ to be done
         note - Kaito (new) 14 July - >200, >200, <20, >200 (need to check for more confirmation for the range of values)
         20/07 12:00PM: Sora only bids after 3/4 skips (should not be a problem for later on)
         20/07 2:30PM: Christie - unknown bots bid 4 times, the second 2 times are the same, does not have to be large
-        21/07 9:10PM: relytz may does not know the precise trueVal since it refused to bid, this may be important
+        22/07 1:35AM: relytz does not know the precise trueVal since it refused to bid, this may be important (there are massive overbid games!)
         21/07 9:30PM: Larper also overbids
 
 
@@ -218,14 +223,17 @@ class CompetitorInstance():
         :return: float: probability of NPC skipping/bidding
         """
         prior = self.NPC_skip_prob[player]
-        NNPC_bid = 0.9
+
         # this should be the previous bid in the self.howMuch_log, the current lastBid is updated later
         if self.howMuch_log[-1] < self.mean_val / 4:
             pr = 0.64
+            NNPC_bid = 0.95
         elif 3 / 4 * self.mean_val > self.howMuch_log[-1] > self.mean_val / 4:
             pr = 0.16
+            NNPC_bid = 0.8
         elif self.howMuch_log[-1] > 3 / 4:
             pr = 0.04
+            NNPC_bid = 0.95
         if not bidded:
             # P(NPC|not bid) = P(not bid|NPC)*P(NPC) / [P(not bid|NPC)*P(NPC) + P(not-bid|N-NPC)*P(N-NPC)]
             self.NPC_skip_prob[player] = (1 - pr) * prior / ((1 - pr) * prior + (1 - NNPC_bid) * (1 - prior))
@@ -402,7 +410,10 @@ class CompetitorInstance():
             if self.phase == "phase_1":
                 # case 1: not known_ally and go for the kill
                 if self.known_ally != self.index:
-                    maxbid = max(self.actual_trueValue - 7 - self.engine.random.randint(0, 500), lastBid + 8)
+                    if self.engine.random.randint(0, 100) > 20:
+                        maxbid = max(self.actual_trueValue - 7 - self.engine.random.randint(0, 500), lastBid + 8)
+                    else:
+                        maxbid = max(self.actual_trueValue - 7, lastBid + 8)
                     maxbid = self.close_to_trueValue(lastBid, maxbid)
                     self.engine.makeBid(maxbid)
                 # case 2: known_ally, at most bid for trueVal - 50
@@ -1004,12 +1015,14 @@ class CompetitorInstance():
         #########################################################################
 
         exclusion_list = []
-        if len(same_large_1st_bid) == 2 or len(same_large_1st_bid) == 4:
+        if len(same_large_1st_bid) in [2,4]:
             exclusion_list.extend(same_large_1st_bid)
-        if len(same_bid_pattern) == 2 or len(same_bid_pattern) == 4:
+        if len(same_bid_pattern) in [2,4]:
             exclusion_list.extend(same_bid_pattern)
-        if len(set(christie_phase2_same)) ==2:
+        if len(set(christie_phase2_same)) == 2:
             exclusion_list.extend(christie_phase2_same)
+        if len(set(neverbid)) ==2:
+            exclusion_list.extend(neverbid)
         exclusion_list.extend(christie_phase1_unknown)
         if repeated_nonbidder:
             exclusion_list.extend(repeated_nonbidder)
